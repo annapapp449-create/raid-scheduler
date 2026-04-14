@@ -741,8 +741,8 @@ export default function LeaderDashboard() {
               </div>
 
               {/* 星期和时间 */}
-              <div style={{ display: "flex", gap: "12px" }}>
-                <div style={{ flex: 1 }}>
+              <div style={{ display: "flex", gap: "12px", minWidth: 0 }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
                   <label style={{ display: "block", fontSize: "13px", color: "var(--text-secondary)", marginBottom: "6px" }}>
                     星期 *
                   </label>
@@ -750,7 +750,7 @@ export default function LeaderDashboard() {
                     className="input"
                     value={newSchedule.dayOfWeek}
                     onChange={(e) => setNewSchedule((prev) => ({ ...prev, dayOfWeek: e.target.value }))}
-                    style={{ appearance: "none", cursor: "pointer" }}
+                    style={{ appearance: "none", cursor: "pointer", width: "100%" }}
                   >
                     {WEEKDAYS.map((day, i) => (
                       <option key={i} value={i}>
@@ -759,7 +759,7 @@ export default function LeaderDashboard() {
                     ))}
                   </select>
                 </div>
-                <div style={{ flex: 1 }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
                   <label style={{ display: "block", fontSize: "13px", color: "var(--text-secondary)", marginBottom: "6px" }}>
                     时间 *
                   </label>
@@ -768,7 +768,7 @@ export default function LeaderDashboard() {
                     className="input"
                     value={newSchedule.startTime}
                     onChange={(e) => setNewSchedule((prev) => ({ ...prev, startTime: e.target.value }))}
-                    style={{ cursor: "pointer" }}
+                    style={{ cursor: "pointer", width: "100%" }}
                   />
                 </div>
               </div>
