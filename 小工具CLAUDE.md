@@ -46,7 +46,7 @@
 | 路由 | React Router | ^7.x | Hash 模式（微信兼容） |
 | 后端/数据库 | LeanCloud | JS SDK ^5.x | 国内 BaaS，免费额度 |
 | 二维码生成 | qrcode.react | ^4.x | 纯前端生成 |
-| 部署 | Vercel | — | 免费，自动部署 |
+| 部署 | Cloudflare Pages | — | 免费，国内可访问，自动部署 |
 | 包管理器 | npm | — | 不用 yarn/pnpm |
 
 ### 关键选型理由
@@ -471,7 +471,7 @@ export default AV;
 3. 空状态 UI（无团次 / 无报名时的引导文案）
 4. 加载状态（skeleton 或 spinner）
 5. 错误状态（网络失败友好提示）
-6. build + 部署 Vercel
+6. build + 部署 Cloudflare Pages
 7. LeanCloud 添加正式域名
 
 **验收标准**：
@@ -480,7 +480,7 @@ export default AV;
 - [ ] 空状态有引导 UI
 - [ ] 异步操作有 loading
 - [ ] 网络失败有提示
-- [ ] Vercel 部署成功
+- [ ] Cloudflare Pages 部署成功
 
 ---
 
@@ -554,14 +554,16 @@ npm run build
 
 ## 十二、部署
 
-### Vercel
+### 当前使用：Cloudflare Pages
 1. 推 GitHub
-2. Vercel 导入 → Vite → `npm run build` → `dist`
-3. 域名加入 LeanCloud 安全域名
+2. Cloudflare Dashboard → Pages → 创建项目 → 关联 GitHub 仓库
+3. 构建命令：`npm run build`，输出目录：`dist`
+4. 部署后域名：`https://项目名.pages.dev`
+5. LeanCloud 安全域名需添加：`*.pages.dev` 和具体的 `项目名.pages.dev`
 
-### 国内备选
-- Cloudflare Pages
-- 阿里云 OSS（需备案）
+### 国内访问备选
+- 未来升级：阿里云 OSS 静态托管 + CDN（需域名备案，速度最快，产品验证成功后再迁移）
+- 备选：腾讯云 COS 静态网站（同样需备案，和阿里云二选一）
 
 ---
 
