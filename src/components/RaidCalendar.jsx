@@ -121,6 +121,7 @@ export default function RaidCalendar({
         borderRadius: "var(--radius-card)",
         padding: "16px",
         marginBottom: "16px",
+        overflow: "hidden",
       }}
     >
       {/* 头部：月份导航 */}
@@ -245,6 +246,7 @@ export default function RaidCalendar({
                 alignItems: "center",
                 justifyContent: "center",
                 borderRadius: "10px",
+                minWidth: 0,
                 border: isSelected
                   ? "2px solid var(--color-frost)"
                   : isTodayDate
@@ -268,6 +270,8 @@ export default function RaidCalendar({
                     : isSelected
                     ? "var(--color-frost)"
                     : "var(--text-primary)",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
                 }}
               >
                 {date.getDate()}
@@ -278,11 +282,12 @@ export default function RaidCalendar({
                 <div
                   style={{
                     position: "absolute",
-                    bottom: "4px",
-                    left: "50%",
-                    transform: "translateX(-50%)",
+                    bottom: "3px",
                     display: "flex",
+                    justifyContent: "center",
+                    width: "100%",
                     gap: "2px",
+                    overflow: "hidden",
                   }}
                 >
                   {Array.from({ length: Math.min(playerSignupCount, 3) }).map((_, i) => (
@@ -293,6 +298,7 @@ export default function RaidCalendar({
                         height: "5px",
                         borderRadius: "50%",
                         background: "var(--color-plague)",
+                        flexShrink: 0,
                       }}
                     />
                   ))}
@@ -301,7 +307,7 @@ export default function RaidCalendar({
                       style={{
                         fontSize: "8px",
                         color: "var(--color-plague)",
-                        marginLeft: "1px",
+                        lineHeight: "5px",
                       }}
                     >
                       +
