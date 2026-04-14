@@ -236,6 +236,11 @@ export default function RaidSignup() {
       {/* 日历 */}
       <RaidCalendar
         schedules={schedules}
+        playerSignupMap={Object.fromEntries(
+          Object.entries(signupsMap)
+            .filter(([_, signups]) => signups.some(s => s.objectId === currentPlayerId))
+            .map(([scheduleId, signups]) => [scheduleId, signups.find(s => s.objectId === currentPlayerId)])
+        )}
         selectedDate={selectedDate}
         onSelectDate={setSelectedDate}
         month={calendarMonth}

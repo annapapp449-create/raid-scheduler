@@ -31,6 +31,7 @@ const STATUS_STYLES = {
  *
  * @param {Object} props
  * @param {Array} props.schedules - RaidSchedule 数组
+ * @param {Object} props.playerSignupMap - { scheduleId: signup } 玩家已报名的团次
  * @param {Date} props.selectedDate - 当前选中的日期
  * @param {Function} props.onSelectDate - 选择日期的回调
  * @param {number} props.month - 当前月份 (1-12)
@@ -39,6 +40,7 @@ const STATUS_STYLES = {
  */
 export default function RaidCalendar({
   schedules = [],
+  playerSignupMap = {},
   selectedDate,
   onSelectDate,
   month,
@@ -102,6 +104,14 @@ export default function RaidCalendar({
     const key = `${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}`;
     const daySchedules = schedulesByDate[key] || [];
     return daySchedules.length;
+  };
+
+  // 获取某天玩家已报名的团次数量
+  const getDayPlayerSignupCount = (date) => {
+    const key = `${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}`;
+    const daySchedules = schedulesByDate[key] || [];
+    // 计算这些团次中有多少是玩家已报名的
+    return daySchedules.filter(s => playerSignupMap[s.objectId]).length;
   };
 
   return (
@@ -217,6 +227,7 @@ export default function RaidCalendar({
         {days.map(({ date, isCurrentMonth, isPast }, index) => {
           const status = getDayStatus(date);
           const raidCount = getDayRaidCount(date);
+          const playerSignupCount = getDayPlayerSignupCount(date);
           const isSelected = isSameDay(date, selectedDate);
           const isTodayDate = isToday(date);
           const style = STATUS_STYLES[status] || STATUS_STYLES.empty;
@@ -261,6 +272,43 @@ export default function RaidCalendar({
               >
                 {date.getDate()}
               </span>
+
+              {/* 玩家已报名的小圆点 */}
+              {playerSignupCount > 0 && (
+                <div
+                  style={{
+                    position: "absolute",
+                    bottom: "4px",
+                    left: "50%",
+                    transform: "translateX(-50%)",
+                    display: "flex",
+                    gap: "2px",
+                  }}
+                >
+                  {Array.from({ length: Math.min(playerSignupCount, 3) }).map((_, i) => (
+                    <span
+                      key={i}
+                      style={{
+                        width: "5px",
+                        height: "5px",
+                        borderRadius: "50%",
+                        background: "var(--color-plague)",
+                      }}
+                    />
+                  ))}
+                  {playerSignupCount > 3 && (
+                    <span
+                      style={{
+                        fontSize: "8px",
+                        color: "var(--color-plague)",
+                        marginLeft: "1px",
+                      }}
+                    >
+                      +
+                    </span>
+                  )}
+                </div>
+              )}
 
             </button>
           );

@@ -91,9 +91,10 @@ export const CLASS_DATA = {
     label: "德鲁伊",
     color: "#FF7C0A",
     specs: [
-      { id: "druid_balance", label: "平衡", role: "dps" },
-      { id: "druid_feral", label: "野性（熊/猫）", role: "tank" },
-      { id: "druid_restoration", label: "恢复", role: "healer" },
+      { id: "druid_balance", label: "平衡（鸟德）", role: "dps" },
+      { id: "druid_feral_cat", label: "猫德", role: "dps" },
+      { id: "druid_feral_bear", label: "熊德", role: "tank" },
+      { id: "druid_restoration", label: "奶德", role: "healer" },
     ],
   },
 };

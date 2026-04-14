@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import ClassIcon from "./ClassIcon";
 import { CLASS_DATA, getSpecsByClassId, getSpecById } from "../utils/classRoleMap";
 import { SERVERS } from "../utils/constants";
@@ -8,6 +8,8 @@ const ROLE_LABELS = {
   healer: "治疗",
   dps: "输出",
 };
+
+const STORAGE_KEY = "raid_signup_history";
 
 /**
  * 报名弹窗组件
@@ -33,6 +35,45 @@ export default function SignupModal({
   });
 
   const [errors, setErrors] = useState({});
+  const [nameHistory, setNameHistory] = useState([]);
+  const [showHistory, setShowHistory] = useState(false);
+
+  // 加载历史记录
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        setNameHistory(JSON.parse(saved));
+      }
+    } catch (e) {
+      console.error("Failed to load history:", e);
+    }
+  }, []);
+
+  // 保存到历史记录
+  const saveToHistory = (playerName, playerClass, playerSpec, playerServer) => {
+    const newEntry = {
+      playerName,
+      playerClass,
+      playerSpec,
+      playerServer,
+      timestamp: Date.now(),
+    };
+
+    setNameHistory((prev) => {
+      // 移除同名的旧记录
+      const filtered = prev.filter((h) => h.playerName !== playerName);
+      // 添加到最前面
+      const updated = [newEntry, ...filtered].slice(0, 5);
+      // 保存到 localStorage
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+      } catch (e) {
+        console.error("Failed to save history:", e);
+      }
+      return updated;
+    });
+  };
 
   const availableSpecs = form.playerClass ? getSpecsByClassId(form.playerClass) : [];
 
@@ -56,6 +97,8 @@ export default function SignupModal({
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!validate()) return;
+    // 保存到历史记录
+    saveToHistory(form.playerName, form.playerClass, form.playerSpec, form.playerServer);
     onSubmit({ ...form, playerRole: selectedRole });
   };
 
@@ -66,6 +109,23 @@ export default function SignupModal({
   const handleSpecChange = (specId) => {
     setForm((prev) => ({ ...prev, playerSpec: specId }));
   };
+
+  // 从历史记录填充
+  const fillFromHistory = (entry) => {
+    setForm((prev) => ({
+      ...prev,
+      playerName: entry.playerName,
+      playerClass: entry.playerClass,
+      playerSpec: entry.playerSpec,
+      playerServer: entry.playerServer,
+    }));
+    setShowHistory(false);
+  };
+
+  // 根据当前输入过滤历史记录
+  const filteredHistory = form.playerName
+    ? nameHistory.filter((h) => h.playerName.includes(form.playerName))
+    : nameHistory;
 
   return (
     <div className="modal-overlay" onClick={onClose}>
@@ -100,7 +160,7 @@ export default function SignupModal({
 
         <form onSubmit={handleSubmit} style={{ padding: "20px", display: "flex", flexDirection: "column", gap: "16px" }}>
           {/* 角色名 */}
-          <div>
+          <div style={{ position: "relative" }}>
             <label style={{ display: "block", fontSize: "13px", color: "var(--text-secondary)", marginBottom: "6px" }}>
               角色名 *
             </label>
@@ -110,9 +170,61 @@ export default function SignupModal({
               placeholder="请输入游戏角色名"
               value={form.playerName}
               onChange={(e) => setForm((prev) => ({ ...prev, playerName: e.target.value }))}
+              onFocus={() => setShowHistory(true)}
+              onBlur={() => setTimeout(() => setShowHistory(false), 150)}
               maxLength={20}
             />
             {errors.playerName && <span style={{ fontSize: "12px", color: "var(--color-blood)" }}>{errors.playerName}</span>}
+
+            {/* 历史记录下拉 */}
+            {showHistory && filteredHistory.length > 0 && (
+              <div
+                style={{
+                  position: "absolute",
+                  top: "100%",
+                  left: 0,
+                  right: 0,
+                  maxHeight: "200px",
+                  overflowY: "auto",
+                  background: "var(--bg-secondary)",
+                  border: "1px solid var(--color-bone)",
+                  borderRadius: "var(--radius-btn)",
+                  marginTop: "4px",
+                  zIndex: 100,
+                  boxShadow: "var(--shadow-card)",
+                }}
+              >
+                {filteredHistory.map((entry, idx) => (
+                  <div
+                    key={idx}
+                    onClick={() => fillFromHistory(entry)}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "8px",
+                      padding: "10px 12px",
+                      cursor: "pointer",
+                      transition: "background 0.15s",
+                      borderBottom: idx < filteredHistory.length - 1 ? "1px solid var(--bg-tertiary)" : "none",
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background = "var(--bg-tertiary)";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = "transparent";
+                    }}
+                  >
+                    <ClassIcon classId={entry.playerClass} size={16} />
+                    <span style={{ fontSize: "13px", color: "var(--text-primary)", flex: 1 }}>
+                      {entry.playerName}
+                    </span>
+                    <span style={{ fontSize: "11px", color: "var(--text-muted)" }}>
+                      {CLASS_DATA[entry.playerClass]?.label || entry.playerClass}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* 服务器 */}

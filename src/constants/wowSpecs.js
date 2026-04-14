@@ -1,53 +1,53 @@
 // WoW 天赋数据 - WotLK 80级全天赋
 
 export const TANK_SPECS = [
-  { id: 'prot_warrior',  name: '防战', cls: 'warrior' },
-  { id: 'prot_paladin',  name: '防骑', cls: 'paladin' },
-  { id: 'blood_dk',      name: '血DK', cls: 'dk' },
-  { id: 'bear_druid',    name: '熊德', cls: 'druid' },
+  { id: 'warrior_prot',      name: '防战', cls: 'warrior' },
+  { id: 'paladin_prot',      name: '防骑', cls: 'paladin' },
+  { id: 'dk_blood',          name: '血DK', cls: 'dk' },
+  { id: 'druid_feral_bear',  name: '熊德', cls: 'druid' },
 ];
 
 export const HEALER_SPECS = [
-  { id: 'holy_paladin',  name: '奶骑', cls: 'paladin' },
-  { id: 'disc_priest',   name: '戒律', cls: 'priest' },
-  { id: 'holy_priest',   name: '神牧', cls: 'priest' },
-  { id: 'resto_shaman',  name: '奶萨', cls: 'shaman' },
-  { id: 'resto_druid',   name: '奶德', cls: 'druid' },
+  { id: 'paladin_holy',      name: '奶骑', cls: 'paladin' },
+  { id: 'priest_disc',       name: '戒律', cls: 'priest' },
+  { id: 'priest_holy',       name: '神牧', cls: 'priest' },
+  { id: 'shaman_restoration', name: '奶萨', cls: 'shaman' },
+  { id: 'druid_restoration',  name: '奶德', cls: 'druid' },
 ];
 
 export const DPS_SPECS = [
   // 战士
-  { id: 'fury_warrior',    name: '狂暴战', cls: 'warrior' },
-  { id: 'arms_warrior',    name: '武器战', cls: 'warrior' },
+  { id: 'warrior_fury',    name: '狂暴战', cls: 'warrior' },
+  { id: 'warrior_arms',    name: '武器战', cls: 'warrior' },
   // 骑士
-  { id: 'ret_paladin',     name: '惩戒骑', cls: 'paladin' },
+  { id: 'paladin_ret',     name: '惩戒骑', cls: 'paladin' },
   // 猎人
-  { id: 'bm_hunter',       name: '兽王猎', cls: 'hunter' },
-  { id: 'mm_hunter',       name: '射击猎', cls: 'hunter' },
-  { id: 'sv_hunter',       name: '生存猎', cls: 'hunter' },
+  { id: 'hunter_beast',    name: '兽王猎', cls: 'hunter' },
+  { id: 'hunter_marks',    name: '射击猎', cls: 'hunter' },
+  { id: 'hunter_surv',     name: '生存猎', cls: 'hunter' },
   // 盗贼
-  { id: 'assa_rogue',      name: '刺杀贼', cls: 'rogue' },
-  { id: 'combat_rogue',    name: '战斗贼', cls: 'rogue' },
-  { id: 'sub_rogue',       name: '敏锐贼', cls: 'rogue' },
+  { id: 'rogue_ass',       name: '刺杀贼', cls: 'rogue' },
+  { id: 'rogue_combat',    name: '战斗贼', cls: 'rogue' },
+  { id: 'rogue_sub',       name: '敏锐贼', cls: 'rogue' },
   // 牧师
-  { id: 'shadow_priest',   name: '暗牧',   cls: 'priest' },
+  { id: 'priest_shadow',   name: '暗牧',   cls: 'priest' },
   // 萨满
-  { id: 'ele_shaman',      name: '元素萨', cls: 'shaman' },
-  { id: 'enh_shaman',      name: '增强萨', cls: 'shaman' },
+  { id: 'shaman_elem',     name: '元素萨', cls: 'shaman' },
+  { id: 'shaman_enhance',  name: '增强萨', cls: 'shaman' },
   // 法师
-  { id: 'arcane_mage',     name: '奥法',   cls: 'mage' },
-  { id: 'fire_mage',       name: '火法',   cls: 'mage' },
-  { id: 'frost_mage',      name: '冰法',   cls: 'mage' },
+  { id: 'mage_arcane',     name: '奥法',   cls: 'mage' },
+  { id: 'mage_fire',       name: '火法',   cls: 'mage' },
+  { id: 'mage_frost',      name: '冰法',   cls: 'mage' },
   // 术士
-  { id: 'affliction_lock', name: '痛苦术', cls: 'warlock' },
-  { id: 'demo_lock',       name: '恶魔术', cls: 'warlock' },
-  { id: 'destro_lock',     name: '毁灭术', cls: 'warlock' },
+  { id: 'warlock_affli',   name: '痛苦术', cls: 'warlock' },
+  { id: 'warlock_demo',    name: '恶魔术', cls: 'warlock' },
+  { id: 'warlock_destro',  name: '毁灭术', cls: 'warlock' },
   // 德鲁伊
-  { id: 'moonkin',         name: '鸟德',   cls: 'druid' },
-  { id: 'feral_druid',     name: '猫德',   cls: 'druid' },
+  { id: 'druid_balance',   name: '鸟德',   cls: 'druid' },
+  { id: 'druid_feral_cat', name: '猫德',   cls: 'druid' },
   // 死骑
-  { id: 'unholy_dk',       name: '邪DK',   cls: 'dk' },
-  { id: 'frost_dk',        name: '冰DK',   cls: 'dk' },
+  { id: 'dk_unholy',       name: '邪DK',   cls: 'dk' },
+  { id: 'dk_frost',        name: '冰DK',   cls: 'dk' },
 ];
 
 // 角色定位配置
