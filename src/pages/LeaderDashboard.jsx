@@ -439,10 +439,10 @@ export default function LeaderDashboard() {
       {/* 添加团次弹窗 */}
       {showAddModal && (
         <div className="modal-overlay" onClick={() => setShowAddModal(false)}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ padding: "16px" }}>
             <div
               style={{
-                padding: "20px",
+                padding: "16px 0",
                 borderBottom: "1px solid var(--bg-tertiary)",
                 display: "flex",
                 justifyContent: "space-between",
@@ -463,7 +463,7 @@ export default function LeaderDashboard() {
                 ×
               </button>
             </div>
-            <div style={{ padding: "20px", display: "flex", flexDirection: "column", gap: "16px" }}>
+            <div style={{ padding: "16px", display: "flex", flexDirection: "column", gap: "14px" }}>
               {/* 副本选择（多选下拉） */}
               <div style={{ position: "relative" }}>
                 <label style={{ display: "block", fontSize: "13px", color: "var(--text-secondary)", marginBottom: "6px" }}>
@@ -741,7 +741,7 @@ export default function LeaderDashboard() {
               </div>
 
               {/* 星期和时间 */}
-              <div style={{ display: "flex", gap: "12px", minWidth: 0 }}>
+              <div style={{ display: "flex", gap: "8px", minWidth: 0 }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <label style={{ display: "block", fontSize: "13px", color: "var(--text-secondary)", marginBottom: "6px" }}>
                     星期 *
@@ -750,7 +750,7 @@ export default function LeaderDashboard() {
                     className="input"
                     value={newSchedule.dayOfWeek}
                     onChange={(e) => setNewSchedule((prev) => ({ ...prev, dayOfWeek: e.target.value }))}
-                    style={{ appearance: "none", cursor: "pointer", width: "100%" }}
+                    style={{ appearance: "none", cursor: "pointer", width: "100%", boxSizing: "border-box", padding: "10px 12px", minHeight: "40px" }}
                   >
                     {WEEKDAYS.map((day, i) => (
                       <option key={i} value={i}>
@@ -768,7 +768,7 @@ export default function LeaderDashboard() {
                     className="input"
                     value={newSchedule.startTime}
                     onChange={(e) => setNewSchedule((prev) => ({ ...prev, startTime: e.target.value }))}
-                    style={{ cursor: "pointer", width: "100%" }}
+                    style={{ cursor: "pointer", width: "100%", boxSizing: "border-box", padding: "10px 12px", minHeight: "40px", fontSize: "14px" }}
                   />
                 </div>
               </div>
