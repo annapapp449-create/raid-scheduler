@@ -13,6 +13,7 @@ import RaidCard from "./RaidCard";
  * @param {Function} props.onSignup - 报名回调
  * @param {Function} props.onCancelSignup - 取消报名回调
  * @param {Function} props.onRemoveSignup - 移除报名回调（团长用）
+ * @param {Function} props.onDeleteSchedule - 删除团次回调（团长用）
  */
 export default function DayRaidsPanel({
   selectedDate,
@@ -23,6 +24,7 @@ export default function DayRaidsPanel({
   onSignup,
   onCancelSignup,
   onRemoveSignup,
+  onDeleteSchedule,
 }) {
   if (!selectedDate) {
     return (
@@ -115,6 +117,7 @@ export default function DayRaidsPanel({
             onSignup={isLeader ? undefined : onSignup}
             onCancelSignup={isLeader ? undefined : onCancelSignup}
             onRemoveSignup={isLeader ? onRemoveSignup : undefined}
+            onDeleteSchedule={isLeader ? onDeleteSchedule : undefined}
           />
         ))}
       </div>

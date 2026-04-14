@@ -3,8 +3,10 @@ import { useParams, useSearchParams } from "react-router-dom";
 import RaidCalendar from "../components/RaidCalendar";
 import DayRaidsPanel from "../components/DayRaidsPanel";
 import QRCodeCard from "../components/QRCodeCard";
+import ClassIcon from "../components/ClassIcon";
 import { mockLeader, mockSchedules, mockSignups } from "../utils/mockData";
 import { RAID_INSTANCES, SERVERS, WEEKDAYS } from "../utils/constants";
+import { CLASS_DATA, getSpecsByClassId, getSpecById } from "../utils/classRoleMap";
 import { generateShareUrl, getWeekKey, isSameDay, getScheduleDate } from "../utils/helpers";
 import { useToast } from "../components/Toast";
 
@@ -79,8 +81,10 @@ export default function LeaderDashboard() {
 
   // 添加团次弹窗表单
   const [newSchedule, setNewSchedule] = useState({
-    instanceId: RAID_INSTANCES[0].id,
+    instanceIds: [],
     characterName: "",
+    characterClass: "",
+    characterSpec: "",
     server: SERVERS[0],
     dayOfWeek: 0,
     startTime: "20:00",
@@ -89,28 +93,44 @@ export default function LeaderDashboard() {
   });
 
   const handleOpenAddModal = () => {
-    // 根据选中的日期预填 dayOfWeek
+    const firstChar = leader?.characters?.[0];
     setNewSchedule((prev) => ({
       ...prev,
-      dayOfWeek: selectedDate.getDay(),
-      characterName: leader?.characters[0] || "",
+      instanceIds: [],
+      dayOfWeek: selectedDate.getDay() - 1, // 0-indexed from Monday (Monday=0, Tuesday=1, ...)
+      weekKey: getWeekKey(selectedDate),
+      characterName: firstChar?.name || "",
+      characterClass: firstChar?.classId || "",
+      characterSpec: firstChar?.specId || "",
     }));
     setShowAddModal(true);
   };
 
   const handleAddSchedule = () => {
-    const instance = RAID_INSTANCES.find((r) => r.id === newSchedule.instanceId);
+    if (newSchedule.instanceIds.length === 0) {
+      showToast("请至少选择一个副本", "error");
+      return;
+    }
+    if (!newSchedule.characterName.trim()) {
+      showToast("请输入开团角色名", "error");
+      return;
+    }
+    const instances = RAID_INSTANCES.filter((r) => newSchedule.instanceIds.includes(r.id));
+    const totalSize = instances.reduce((sum, inst) => sum + (inst.size || 25), 0);
     const schedule = {
       objectId: `schedule_${Date.now()}`,
       leader: { objectId: leader?.objectId },
-      instanceId: newSchedule.instanceId,
-      raidSize: instance?.size || 25,
-      characterName: newSchedule.characterName || leader?.characters[0],
+      instanceIds: newSchedule.instanceIds,
+      instanceId: newSchedule.instanceIds[0],
+      raidSize: totalSize,
+      characterName: newSchedule.characterName,
+      characterClass: newSchedule.characterClass,
+      characterSpec: newSchedule.characterSpec,
       server: newSchedule.server,
       dayOfWeek: parseInt(newSchedule.dayOfWeek),
       startTime: newSchedule.startTime,
-      weekKey: getWeekKey(),
-      fragmentEnabled: newSchedule.fragmentEnabled && instance?.hasFragment,
+      weekKey: newSchedule.weekKey || getWeekKey(selectedDate),
+      fragmentEnabled: newSchedule.fragmentEnabled && instances.some((inst) => inst.hasFragment),
       fragmentStatus: null,
       fragmentPlayer: null,
       fragmentServer: null,
@@ -134,6 +154,16 @@ export default function LeaderDashboard() {
       prev.map((s) => (s.objectId === scheduleId ? { ...s, signupCount: s.signupCount - 1 } : s))
     );
     showToast("已移除报名", "info");
+  };
+
+  const handleDeleteSchedule = (scheduleId) => {
+    setSchedules((prev) => prev.filter((s) => s.objectId !== scheduleId));
+    setSignupsMap((prev) => {
+      const newMap = { ...prev };
+      delete newMap[scheduleId];
+      return newMap;
+    });
+    showToast("已取消开团", "info");
   };
 
   // 月份切换
@@ -217,10 +247,14 @@ export default function LeaderDashboard() {
                 background: "var(--bg-tertiary)",
                 borderRadius: "var(--radius-badge)",
                 fontSize: "12px",
-                color: "var(--text-secondary)",
+                color: CLASS_DATA[char.classId]?.color || "var(--text-secondary)",
+                display: "flex",
+                alignItems: "center",
+                gap: "4px",
               }}
             >
-              {char}
+              <ClassIcon classId={char.classId} size={16} />
+              {char.name}
             </span>
           ))}
         </div>
@@ -262,6 +296,7 @@ export default function LeaderDashboard() {
         currentSignupId={null}
         isLeader={true}
         onRemoveSignup={handleRemoveSignup}
+        onDeleteSchedule={handleDeleteSchedule}
       />
 
       {/* 添加团次弹窗 */}
@@ -292,30 +327,57 @@ export default function LeaderDashboard() {
               </button>
             </div>
             <div style={{ padding: "20px", display: "flex", flexDirection: "column", gap: "16px" }}>
-              {/* 副本选择 */}
+              {/* 副本选择（多选） */}
               <div>
                 <label style={{ display: "block", fontSize: "13px", color: "var(--text-secondary)", marginBottom: "6px" }}>
-                  副本 *
+                  副本（可多选）*
                 </label>
-                <select
-                  className="input"
-                  value={newSchedule.instanceId}
-                  onChange={(e) => {
-                    const instance = RAID_INSTANCES.find((r) => r.id === e.target.value);
-                    setNewSchedule((prev) => ({
-                      ...prev,
-                      instanceId: e.target.value,
-                      fragmentEnabled: instance?.hasFragment ? prev.fragmentEnabled : false,
-                    }));
-                  }}
-                  style={{ appearance: "none", cursor: "pointer" }}
-                >
-                  {RAID_INSTANCES.map((instance) => (
-                    <option key={instance.id} value={instance.id}>
-                      [{instance.phase}] {instance.label} (iLvl {instance.ilvl})
-                    </option>
-                  ))}
-                </select>
+                <div style={{ display: "flex", flexDirection: "column", gap: "8px", maxHeight: "240px", overflowY: "auto" }}>
+                  {RAID_INSTANCES.map((instance) => {
+                    const isChecked = newSchedule.instanceIds.includes(instance.id);
+                    return (
+                      <label
+                        key={instance.id}
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "8px",
+                          padding: "8px 12px",
+                          background: isChecked ? "rgba(79, 195, 247, 0.1)" : "var(--bg-tertiary)",
+                          border: `1px solid ${isChecked ? "var(--color-frost)" : "var(--color-bone)"}`,
+                          borderRadius: "var(--radius-btn)",
+                          cursor: "pointer",
+                          transition: "all 0.15s ease",
+                        }}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={isChecked}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setNewSchedule((prev) => ({
+                                ...prev,
+                                instanceIds: [...prev.instanceIds, instance.id],
+                              }));
+                            } else {
+                              setNewSchedule((prev) => ({
+                                ...prev,
+                                instanceIds: prev.instanceIds.filter((id) => id !== instance.id),
+                              }));
+                            }
+                          }}
+                          style={{ width: "18px", height: "18px", accentColor: "var(--color-frost)" }}
+                        />
+                        <span style={{ fontSize: "13px", color: "var(--text-primary)" }}>
+                          [{instance.phase}] {instance.label}
+                        </span>
+                        <span style={{ fontSize: "11px", color: "var(--text-muted)", marginLeft: "auto" }}>
+                          iLvl {instance.ilvl}
+                        </span>
+                      </label>
+                    );
+                  })}
+                </div>
               </div>
 
               {/* 服务器 */}
@@ -342,18 +404,83 @@ export default function LeaderDashboard() {
                 <label style={{ display: "block", fontSize: "13px", color: "var(--text-secondary)", marginBottom: "6px" }}>
                   开团角色 *
                 </label>
+                {/* 角色名输入 + 历史下拉 */}
+                <div style={{ position: "relative", marginBottom: "8px" }}>
+                  <input
+                    type="text"
+                    className="input"
+                    placeholder="输入角色名或选择历史"
+                    value={newSchedule.characterName}
+                    onChange={(e) => setNewSchedule((prev) => ({ ...prev, characterName: e.target.value }))}
+                    maxLength={20}
+                    style={{ paddingRight: "40px" }}
+                  />
+                  <select
+                    value=""
+                    onChange={(e) => {
+                      const char = leader?.characters?.find((c) => c.name === e.target.value);
+                      if (char) {
+                        setNewSchedule((prev) => ({
+                          ...prev,
+                          characterName: char.name,
+                          characterClass: char.classId || "",
+                          characterSpec: char.specId || "",
+                        }));
+                      }
+                    }}
+                    style={{
+                      position: "absolute",
+                      right: "8px",
+                      top: "50%",
+                      transform: "translateY(-50%)",
+                      background: "var(--bg-tertiary)",
+                      border: "none",
+                      borderRadius: "4px",
+                      padding: "4px 8px",
+                      fontSize: "12px",
+                      cursor: "pointer",
+                      appearance: "none",
+                      color: "var(--text-secondary)",
+                    }}
+                  >
+                    <option value="">历史</option>
+                    {leader?.characters?.map((char, i) => (
+                      <option key={i} value={char.name}>
+                        {char.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                {/* 职业选择 */}
                 <select
                   className="input"
-                  value={newSchedule.characterName || leader?.characters[0]}
-                  onChange={(e) => setNewSchedule((prev) => ({ ...prev, characterName: e.target.value }))}
-                  style={{ appearance: "none", cursor: "pointer" }}
+                  value={newSchedule.characterClass}
+                  onChange={(e) => setNewSchedule((prev) => ({ ...prev, characterClass: e.target.value, characterSpec: "" }))}
+                  style={{ appearance: "none", cursor: "pointer", marginBottom: "8px" }}
                 >
-                  {leader?.characters.map((char, i) => (
-                    <option key={i} value={char}>
-                      {char}
+                  <option value="">选择职业</option>
+                  {Object.entries(CLASS_DATA).map(([id, data]) => (
+                    <option key={id} value={id}>
+                      {data.label}
                     </option>
                   ))}
                 </select>
+                {/* 天赋选择 */}
+                {newSchedule.characterClass && (
+                  <select
+                    className="input"
+                    value={newSchedule.characterSpec}
+                    onChange={(e) => setNewSchedule((prev) => ({ ...prev, characterSpec: e.target.value }))}
+                    style={{ appearance: "none", cursor: "pointer" }}
+                  >
+                    <option value="">选择天赋</option>
+                    {getSpecsByClassId(newSchedule.characterClass).map((spec) => (
+                      <option key={spec.id} value={spec.id}>
+                        {spec.label}
+                      </option>
+                    ))}
+                  </select>
+                )}
               </div>
 
               {/* 星期和时间 */}

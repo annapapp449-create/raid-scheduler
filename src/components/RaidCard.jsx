@@ -18,11 +18,14 @@ export default function RaidCard({
   currentSignupId,
   isLeader = false,
   onRemoveSignup,
+  onDeleteSchedule,
 }) {
   const [expanded, setExpanded] = useState(false);
   const [showModal, setShowModal] = useState(false);
 
-  const instance = getRaidInstance(schedule.instanceId);
+  const instanceIds = schedule.instanceIds || (schedule.instanceId ? [schedule.instanceId] : []);
+  const instances = instanceIds.map((id) => getRaidInstance(id)).filter(Boolean);
+  const primaryInstance = instances[0];
   const statusConfig = STATUS_CONFIG[schedule.status];
   const currentSignup = signups.find((s) => s.objectId === currentSignupId);
 
@@ -79,7 +82,7 @@ export default function RaidCard({
                     fontWeight: 500,
                   }}
                 >
-                  {instance?.phase}
+                  {primaryInstance?.phase}
                 </span>
                 <h4
                   style={{
@@ -89,9 +92,11 @@ export default function RaidCard({
                     color: "var(--text-primary)",
                   }}
                 >
-                  {instance?.label || schedule.instanceId}
+                  {instances.length === 1
+                    ? primaryInstance?.label
+                    : instances.map((inst) => inst.label).join(" + ")}
                 </h4>
-                {instance?.ilvl && (
+                {instances.length === 1 && primaryInstance?.ilvl && (
                   <span
                     style={{
                       fontSize: "11px",
@@ -101,7 +106,20 @@ export default function RaidCard({
                       borderRadius: "4px",
                     }}
                   >
-                    iLvl {instance.ilvl}
+                    iLvl {primaryInstance.ilvl}
+                  </span>
+                )}
+                {instances.length > 1 && (
+                  <span
+                    style={{
+                      fontSize: "11px",
+                      padding: "2px 6px",
+                      background: "rgba(79, 195, 247, 0.1)",
+                      color: "var(--color-frost)",
+                      borderRadius: "4px",
+                    }}
+                  >
+                    {instances.length}个副本
                   </span>
                 )}
               </div>
@@ -193,7 +211,34 @@ export default function RaidCard({
               </span>
             </button>
 
-            {currentSignup ? (
+            {isLeader ? (
+              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                <span
+                  style={{
+                    fontSize: "13px",
+                    color: "var(--color-plague)",
+                    fontWeight: 500,
+                  }}
+                >
+                  开团中
+                </span>
+                {onDeleteSchedule && (
+                  <button
+                    onClick={() => onDeleteSchedule(schedule.objectId)}
+                    className="btn btn-secondary"
+                    style={{
+                      padding: "6px 12px",
+                      fontSize: "12px",
+                      minHeight: "32px",
+                      color: "var(--color-blood)",
+                      borderColor: "var(--color-blood)",
+                    }}
+                  >
+                    取消开团
+                  </button>
+                )}
+              </div>
+            ) : currentSignup ? (
               <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                 <span
                   style={{
