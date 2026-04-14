@@ -119,9 +119,11 @@ export default function RaidCalendar({
       style={{
         background: "var(--bg-secondary)",
         borderRadius: "var(--radius-card)",
-        padding: "16px",
+        padding: "12px",
         marginBottom: "16px",
         overflow: "hidden",
+        width: "100%",
+        boxSizing: "border-box",
       }}
     >
       {/* 头部：月份导航 */}
@@ -130,7 +132,7 @@ export default function RaidCalendar({
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
-          marginBottom: "16px",
+          marginBottom: "12px",
         }}
       >
         <button
@@ -140,10 +142,10 @@ export default function RaidCalendar({
             border: "none",
             borderRadius: "8px",
             color: "var(--text-primary)",
-            width: "36px",
-            height: "36px",
+            width: "32px",
+            height: "32px",
             cursor: "pointer",
-            fontSize: "18px",
+            fontSize: "16px",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
@@ -152,8 +154,8 @@ export default function RaidCalendar({
           ‹
         </button>
 
-        <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-          <span style={{ fontSize: "17px", fontWeight: 600, color: "var(--text-primary)" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+          <span style={{ fontSize: "15px", fontWeight: 600, color: "var(--text-primary)" }}>
             {getMonthName(month)} {year}
           </span>
           <button
@@ -163,8 +165,8 @@ export default function RaidCalendar({
               border: "none",
               borderRadius: "6px",
               color: "var(--color-frost)",
-              fontSize: "12px",
-              padding: "4px 10px",
+              fontSize: "11px",
+              padding: "3px 8px",
               cursor: "pointer",
             }}
           >
@@ -179,10 +181,10 @@ export default function RaidCalendar({
             border: "none",
             borderRadius: "8px",
             color: "var(--text-primary)",
-            width: "36px",
-            height: "36px",
+            width: "32px",
+            height: "32px",
             cursor: "pointer",
-            fontSize: "18px",
+            fontSize: "16px",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
@@ -197,8 +199,8 @@ export default function RaidCalendar({
         style={{
           display: "grid",
           gridTemplateColumns: "repeat(7, 1fr)",
-          gap: "4px",
-          marginBottom: "8px",
+          gap: "2px",
+          marginBottom: "4px",
         }}
       >
         {WEEKDAY_LABELS.map((label, i) => (
@@ -206,10 +208,10 @@ export default function RaidCalendar({
             key={i}
             style={{
               textAlign: "center",
-              fontSize: "12px",
+              fontSize: "11px",
               color: i === 0 ? "var(--color-blood)" : "var(--text-muted)",
               fontWeight: 500,
-              padding: "4px 0",
+              padding: "2px 0",
             }}
           >
             {label}
@@ -222,7 +224,7 @@ export default function RaidCalendar({
         style={{
           display: "grid",
           gridTemplateColumns: "repeat(7, 1fr)",
-          gap: "4px",
+          gap: "2px",
         }}
       >
         {days.map(({ date, isCurrentMonth, isPast }, index) => {
@@ -256,14 +258,14 @@ export default function RaidCalendar({
                 opacity: isPast && !isTodayDate ? 0.4 : 1,
                 cursor: isPast && !isTodayDate ? "default" : "pointer",
                 transition: "all 0.15s ease",
-                padding: "4px",
-                minHeight: "44px",
+                padding: "2px",
+                minHeight: "36px",
               }}
             >
               {/* 日期数字 */}
               <span
                 style={{
-                  fontSize: isSelected ? "15px" : "14px",
+                  fontSize: isSelected ? "13px" : "12px",
                   fontWeight: isSelected ? 700 : isTodayDate ? 600 : 400,
                   color: isPast && !isTodayDate
                     ? "var(--text-muted)"

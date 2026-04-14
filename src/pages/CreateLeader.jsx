@@ -242,22 +242,13 @@ export default function CreateLeader() {
         <button type="submit" className="btn btn-primary" disabled={isSubmitting} style={{ marginTop: "8px" }}>
           {isSubmitting ? "创建中..." : "创建身份"}
         </button>
-      </form>
 
-      {/* 返回链接 */}
-      <p
-        style={{
-          textAlign: "center",
-          marginTop: "24px",
-          fontSize: "13px",
-          color: "var(--text-muted)",
-        }}
-      >
-        已经是团长？{" "}
-        <a href="#/create" style={{ color: "var(--color-frost)" }}>
-          返回创建
-        </a>
-      </p>
+        {errors.submit && (
+          <p style={{ textAlign: "center", color: "var(--color-blood)", fontSize: "13px", margin: "8px 0 0" }}>
+            {errors.submit}
+          </p>
+        )}
+      </form>
     </div>
   );
 }
