@@ -4,6 +4,7 @@ import RaidCalendar from "../components/RaidCalendar";
 import DayRaidsPanel from "../components/DayRaidsPanel";
 import QRCodeCard from "../components/QRCodeCard";
 import ClassIcon from "../components/ClassIcon";
+import { TeamConfigPanel } from "../components/TeamConfig";
 import { mockLeader, mockSchedules, mockSignups } from "../utils/mockData";
 import { RAID_INSTANCES, SERVERS, WEEKDAYS } from "../utils/constants";
 import { CLASS_DATA, getSpecsByClassId, getSpecById } from "../utils/classRoleMap";
@@ -28,6 +29,10 @@ export default function LeaderDashboard() {
   const [leader, setLeader] = useState(null);
   const [schedules, setSchedules] = useState([]);
   const [signupsMap, setSignupsMap] = useState({});
+  const [savedTemplates, setSavedTemplates] = useState([]);
+  const [recentTeamConfigs, setRecentTeamConfigs] = useState([]);
+  const [lastSelectedInstance, setLastSelectedInstance] = useState(null);
+  const [instancePresets, setInstancePresets] = useState([]);
 
   // UI 状态
   const [showAddModal, setShowAddModal] = useState(false);
@@ -98,18 +103,20 @@ export default function LeaderDashboard() {
     startTime: "20:00",
     fragmentEnabled: false,
     note: "",
+    teamConfig: { tank: 3, healer: 4, dps: 18, specRequirements: [] },
   });
 
   const handleOpenAddModal = () => {
     const firstChar = leader?.characters?.[0];
     setNewSchedule((prev) => ({
       ...prev,
-      instanceIds: [],
+      instanceIds: lastSelectedInstance || prev.instanceIds,
       dayOfWeek: selectedDate.getDay() - 1, // 0-indexed from Monday (Monday=0, Tuesday=1, ...)
       weekKey: getWeekKey(selectedDate),
       characterName: firstChar?.name || "",
       characterClass: firstChar?.classId || "",
       characterSpec: firstChar?.specId || "",
+      teamConfig: { tank: 3, healer: 4, dps: 18, specRequirements: [] },
     }));
     setShowAddModal(true);
   };
@@ -145,10 +152,28 @@ export default function LeaderDashboard() {
       signupCount: 0,
       status: "recruiting",
       note: newSchedule.note,
+      teamConfig: newSchedule.teamConfig,
     };
 
     setSchedules((prev) => [...prev, schedule]);
     setSignupsMap((prev) => ({ ...prev, [schedule.objectId]: [] }));
+
+    // 记录到最近使用的配置
+    const tc = newSchedule.teamConfig;
+    if (tc) {
+      setRecentTeamConfigs((prev) => {
+        const filtered = prev.filter(
+          (r) => !(r.tank === tc.tank && r.healer === tc.healer && r.dps === tc.dps && JSON.stringify(r.specRequirements) === JSON.stringify(tc.specRequirements))
+        );
+        return [{ ...tc, usedAt: Date.now() }, ...filtered].slice(0, 3);
+      });
+    }
+
+    // 记住副本选择
+    if (newSchedule.instanceIds.length > 0) {
+      setLastSelectedInstance(newSchedule.instanceIds);
+    }
+
     setShowAddModal(false);
     showToast("团次添加成功", "success");
   };
@@ -172,6 +197,28 @@ export default function LeaderDashboard() {
       return newMap;
     });
     showToast("已取消开团", "info");
+  };
+
+  // 模板管理
+  const handleSaveTemplate = (template) => {
+    setSavedTemplates((prev) => {
+      if (prev.length >= 5) {
+        showToast("最多保存5个模板", "error");
+        return prev;
+      }
+      const exists = prev.find((t) => t.name === template.name);
+      if (exists) {
+        // 更新已存在的模板
+        return prev.map((t) => (t.name === template.name ? template : t));
+      }
+      return [...prev, template];
+    });
+    showToast("模板已保存", "success");
+  };
+
+  const handleDeleteTemplate = (templateName) => {
+    setSavedTemplates((prev) => prev.filter((t) => t.name !== templateName));
+    showToast("模板已删除", "info");
   };
 
   // 月份切换
@@ -340,6 +387,56 @@ export default function LeaderDashboard() {
                 <label style={{ display: "block", fontSize: "13px", color: "var(--text-secondary)", marginBottom: "6px" }}>
                   副本（可多选）*
                 </label>
+                {/* 副本预设快捷选择 */}
+                {instancePresets.length > 0 && (
+                  <div
+                    style={{
+                      display: "flex",
+                      flexWrap: "wrap",
+                      gap: "6px",
+                      marginBottom: "8px",
+                    }}
+                  >
+                    {instancePresets.map((preset, idx) => (
+                      <button
+                        key={idx}
+                        onClick={() => {
+                          setNewSchedule((prev) => ({
+                            ...prev,
+                            instanceIds: [...preset],
+                          }));
+                        }}
+                        style={{
+                          padding: "4px 8px",
+                          borderRadius: "4px",
+                          border: "1px solid var(--border-color)",
+                          background: "var(--bg-tertiary)",
+                          color: "var(--text-secondary)",
+                          fontSize: "12px",
+                          cursor: "pointer",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "4px",
+                        }}
+                      >
+                        {preset.map((id) => RAID_INSTANCES.find((i) => i.id === id)?.shortLabel || id).join("+")}
+                        <span
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setInstancePresets((prev) => prev.filter((_, i) => i !== idx));
+                          }}
+                          style={{
+                            marginLeft: "2px",
+                            color: "var(--text-muted)",
+                            fontSize: "10px",
+                          }}
+                        >
+                          ✕
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                )}
                 {/* 显示已选副本 */}
                 <div
                   onClick={() => setShowInstanceDropdown(!showInstanceDropdown)}
@@ -363,7 +460,29 @@ export default function LeaderDashboard() {
                       ? RAID_INSTANCES.find((i) => i.id === newSchedule.instanceIds[0])?.label
                       : `${newSchedule.instanceIds.length}个副本`}
                   </span>
-                  <span style={{ transform: showInstanceDropdown ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.2s" }}>▼</span>
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                    {newSchedule.instanceIds.length > 0 && (
+                      <span
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (instancePresets.length < 5) {
+                            setInstancePresets((prev) => [...prev, newSchedule.instanceIds]);
+                            showToast("已保存快捷配置", "success");
+                          } else {
+                            showToast("最多保存5个快捷配置", "error");
+                          }
+                        }}
+                        style={{
+                          fontSize: "11px",
+                          color: "var(--color-gold)",
+                          cursor: "pointer",
+                        }}
+                      >
+                        保存
+                      </span>
+                    )}
+                    <span style={{ transform: showInstanceDropdown ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.2s" }}>▼</span>
+                  </div>
                 </div>
                 {/* 下拉选项 */}
                 {showInstanceDropdown && (
@@ -521,7 +640,7 @@ export default function LeaderDashboard() {
                     className="input"
                     value={newSchedule.characterSpec}
                     onChange={(e) => setNewSchedule((prev) => ({ ...prev, characterSpec: e.target.value }))}
-                    style={{ appearance: "none", cursor: "pointer" }}
+                    style={{ appearance: "none", cursor: "pointer", marginBottom: "8px" }}
                   >
                     <option value="">选择天赋</option>
                     {getSpecsByClassId(newSchedule.characterClass).map((spec) => (
@@ -610,6 +729,21 @@ export default function LeaderDashboard() {
                   value={newSchedule.note}
                   onChange={(e) => setNewSchedule((prev) => ({ ...prev, note: e.target.value }))}
                   maxLength={100}
+                />
+              </div>
+
+              {/* 团队配置 */}
+              <div>
+                <label style={{ display: "block", fontSize: "13px", color: "var(--text-secondary)", marginBottom: "6px" }}>
+                  团队配置
+                </label>
+                <TeamConfigPanel
+                  value={newSchedule.teamConfig}
+                  onChange={(teamConfig) => setNewSchedule((prev) => ({ ...prev, teamConfig }))}
+                  savedTemplates={savedTemplates}
+                  onSaveTemplate={handleSaveTemplate}
+                  onDeleteTemplate={handleDeleteTemplate}
+                  recentConfigs={recentTeamConfigs}
                 />
               </div>
 

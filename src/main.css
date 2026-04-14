@@ -22,6 +22,13 @@
   --color-bone: #444a5a;
   --color-blood: #ef5350;
   --color-blood-dim: #c73e3e;
+  --color-gold: #ffd100;
+  --color-success: #00ff96;
+  --color-error: #ff4444;
+  --color-warning: #ff8c00;
+
+  /* Border */
+  --border-color: rgba(255, 255, 255, 0.08);
 
   /* Shadows */
   --shadow-card: 0 2px 12px rgba(0, 0, 0, 0.4);
