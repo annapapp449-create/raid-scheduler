@@ -31,6 +31,7 @@ export default function LeaderDashboard() {
 
   // UI 状态
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showInstanceDropdown, setShowInstanceDropdown] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
 
   // 日历状态
@@ -58,6 +59,13 @@ export default function LeaderDashboard() {
       setShowPasswordModal(false);
     }
   }, [shareId, searchParams]);
+
+  // 点击外部关闭副本下拉
+  useEffect(() => {
+    if (!showAddModal) {
+      setShowInstanceDropdown(false);
+    }
+  }, [showAddModal]);
 
   const handlePasswordSubmit = () => {
     if (passwordInput === mockLeader.editPassword) {
@@ -327,57 +335,99 @@ export default function LeaderDashboard() {
               </button>
             </div>
             <div style={{ padding: "20px", display: "flex", flexDirection: "column", gap: "16px" }}>
-              {/* 副本选择（多选） */}
-              <div>
+              {/* 副本选择（多选下拉） */}
+              <div style={{ position: "relative" }}>
                 <label style={{ display: "block", fontSize: "13px", color: "var(--text-secondary)", marginBottom: "6px" }}>
                   副本（可多选）*
                 </label>
-                <div style={{ display: "flex", flexDirection: "column", gap: "8px", maxHeight: "240px", overflowY: "auto" }}>
-                  {RAID_INSTANCES.map((instance) => {
-                    const isChecked = newSchedule.instanceIds.includes(instance.id);
-                    return (
-                      <label
-                        key={instance.id}
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: "8px",
-                          padding: "8px 12px",
-                          background: isChecked ? "rgba(79, 195, 247, 0.1)" : "var(--bg-tertiary)",
-                          border: `1px solid ${isChecked ? "var(--color-frost)" : "var(--color-bone)"}`,
-                          borderRadius: "var(--radius-btn)",
-                          cursor: "pointer",
-                          transition: "all 0.15s ease",
-                        }}
-                      >
-                        <input
-                          type="checkbox"
-                          checked={isChecked}
-                          onChange={(e) => {
-                            if (e.target.checked) {
-                              setNewSchedule((prev) => ({
-                                ...prev,
-                                instanceIds: [...prev.instanceIds, instance.id],
-                              }));
-                            } else {
-                              setNewSchedule((prev) => ({
-                                ...prev,
-                                instanceIds: prev.instanceIds.filter((id) => id !== instance.id),
-                              }));
-                            }
-                          }}
-                          style={{ width: "18px", height: "18px", accentColor: "var(--color-frost)" }}
-                        />
-                        <span style={{ fontSize: "13px", color: "var(--text-primary)" }}>
-                          [{instance.phase}] {instance.label}
-                        </span>
-                        <span style={{ fontSize: "11px", color: "var(--text-muted)", marginLeft: "auto" }}>
-                          iLvl {instance.ilvl}
-                        </span>
-                      </label>
-                    );
-                  })}
+                {/* 显示已选副本 */}
+                <div
+                  onClick={() => setShowInstanceDropdown(!showInstanceDropdown)}
+                  style={{
+                    padding: "10px 12px",
+                    background: "var(--bg-tertiary)",
+                    border: "1px solid var(--color-bone)",
+                    borderRadius: "var(--radius-btn)",
+                    cursor: "pointer",
+                    fontSize: "13px",
+                    color: newSchedule.instanceIds.length > 0 ? "var(--text-primary)" : "var(--text-muted)",
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                  }}
+                >
+                  <span>
+                    {newSchedule.instanceIds.length === 0
+                      ? "选择副本"
+                      : newSchedule.instanceIds.length === 1
+                      ? RAID_INSTANCES.find((i) => i.id === newSchedule.instanceIds[0])?.label
+                      : `${newSchedule.instanceIds.length}个副本`}
+                  </span>
+                  <span style={{ transform: showInstanceDropdown ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.2s" }}>▼</span>
                 </div>
+                {/* 下拉选项 */}
+                {showInstanceDropdown && (
+                  <div
+                    style={{
+                      position: "absolute",
+                      top: "100%",
+                      left: 0,
+                      right: 0,
+                      maxHeight: "300px",
+                      overflowY: "auto",
+                      background: "var(--bg-secondary)",
+                      border: "1px solid var(--color-bone)",
+                      borderRadius: "var(--radius-btn)",
+                      marginTop: "4px",
+                      zIndex: 100,
+                      boxShadow: "var(--shadow-card)",
+                    }}
+                  >
+                    {RAID_INSTANCES.map((instance) => {
+                      const isChecked = newSchedule.instanceIds.includes(instance.id);
+                      return (
+                        <label
+                          key={instance.id}
+                          onClick={(e) => e.stopPropagation()}
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "8px",
+                            padding: "10px 12px",
+                            background: isChecked ? "rgba(79, 195, 247, 0.1)" : "transparent",
+                            cursor: "pointer",
+                            transition: "background 0.15s",
+                          }}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={isChecked}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setNewSchedule((prev) => ({
+                                  ...prev,
+                                  instanceIds: [...prev.instanceIds, instance.id],
+                                }));
+                              } else {
+                                setNewSchedule((prev) => ({
+                                  ...prev,
+                                  instanceIds: prev.instanceIds.filter((id) => id !== instance.id),
+                                }));
+                              }
+                            }}
+                            style={{ width: "18px", height: "18px", accentColor: "var(--color-frost)" }}
+                          />
+                          <span style={{ fontSize: "13px", color: "var(--text-primary)" }}>
+                            [{instance.phase}] {instance.label}
+                          </span>
+                          <span style={{ fontSize: "11px", color: "var(--text-muted)", marginLeft: "auto" }}>
+                            iLvl {instance.ilvl}
+                          </span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
 
               {/* 服务器 */}
