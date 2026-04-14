@@ -58,6 +58,11 @@ html {
   scroll-behavior: smooth;
 }
 
+* {
+  box-sizing: border-box;
+  max-width: 100%;
+}
+
 body {
   margin: 0;
   padding: 0;
@@ -68,6 +73,7 @@ body {
   min-height: 100vh;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
 }
 
 #root {
@@ -111,6 +117,8 @@ body {
   max-width: 480px;
   margin: 0 auto;
   padding: 0 16px;
+  box-sizing: border-box;
+  overflow-x: hidden;
 }
 
 .ice-border {
@@ -188,6 +196,7 @@ body {
   font-size: 15px;
   min-height: 44px;
   transition: border-color var(--transition-fast);
+  box-sizing: border-box;
 }
 
 .input:focus {
