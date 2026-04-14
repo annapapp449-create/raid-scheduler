@@ -5,6 +5,10 @@ import DayRaidsPanel from "../components/DayRaidsPanel";
 import { mockLeader, mockSchedules, mockSignups } from "../utils/mockData";
 import { useToast } from "../components/Toast";
 import { isSameDay, getScheduleDate } from "../utils/helpers";
+import { getLeaderByShareId } from "../services/leancloud/leaderService";
+import { getSchedulesByLeader } from "../services/leancloud/scheduleService";
+import { getSignupsBySchedule, createSignup, cancelSignup as cancelSignupService } from "../services/leancloud/signupService";
+import { isConfigured } from "../services/leancloud";
 
 /**
  * 玩家报名页
@@ -26,24 +30,59 @@ export default function RaidSignup() {
   const [calendarMonth, setCalendarMonth] = useState(today.getMonth() + 1);
   const [calendarYear, setCalendarYear] = useState(today.getFullYear());
 
-  // 模拟数据加载
+  // 数据加载
   useEffect(() => {
-    setTimeout(() => {
-      setLeader(mockLeader);
-      setSchedules(mockSchedules);
-      setSignupsMap(mockSignups);
-      setIsLoading(false);
+    async function loadData() {
+      if (isConfigured()) {
+        try {
+          const leaderData = await getLeaderByShareId(shareId);
+          if (leaderData) {
+            setLeader(leaderData);
+            const schedulesData = await getSchedulesByLeader(leaderData.objectId);
+            setSchedules(schedulesData);
 
-      // 检查 localStorage 是否有已报名记录
-      Object.entries(mockSignups).forEach(([scheduleId, signups]) => {
-        signups.forEach((signup) => {
-          const savedId = localStorage.getItem(`signup_${scheduleId}`);
-          if (savedId === signup.objectId) {
-            setCurrentPlayerId(signup.objectId);
+            // 加载各团次的报名
+            const signups = {};
+            for (const schedule of schedulesData) {
+              signups[schedule.objectId] = await getSignupsBySchedule(schedule.objectId);
+            }
+            setSignupsMap(signups);
+
+            // 检查 localStorage 是否有已报名记录
+            Object.entries(signups).forEach(([scheduleId, scheduleSignups]) => {
+              scheduleSignups.forEach((signup) => {
+                const savedId = localStorage.getItem(`signup_${scheduleId}`);
+                if (savedId === signup.objectId) {
+                  setCurrentPlayerId(signup.objectId);
+                }
+              });
+            });
           }
-        });
-      });
-    }, 300);
+        } catch (error) {
+          console.error("加载数据失败:", error);
+        } finally {
+          setIsLoading(false);
+        }
+      } else {
+        // 使用 mock 数据
+        setTimeout(() => {
+          setLeader(mockLeader);
+          setSchedules(mockSchedules);
+          setSignupsMap(mockSignups);
+          setIsLoading(false);
+
+          Object.entries(mockSignups).forEach(([scheduleId, signups]) => {
+            signups.forEach((signup) => {
+              const savedId = localStorage.getItem(`signup_${scheduleId}`);
+              if (savedId === signup.objectId) {
+                setCurrentPlayerId(signup.objectId);
+              }
+            });
+          });
+        }, 300);
+      }
+    }
+    loadData();
   }, [shareId]);
 
   // 选中日期的团次
@@ -55,76 +94,103 @@ export default function RaidSignup() {
   }, [schedules, selectedDate]);
 
   // 报名
-  const handleSignup = (scheduleId, formData) => {
-    const newSignup = {
-      objectId: `signup_${Date.now()}`,
-      playerName: formData.playerName,
-      playerServer: formData.playerServer,
-      playerClass: formData.playerClass,
-      playerRole: formData.playerRole,
-      playerSpec: formData.playerSpec,
-      contactInfo: formData.contactInfo,
-      status: "confirmed",
-    };
+  const handleSignup = async (scheduleId, formData) => {
+    try {
+      let newSignup;
 
-    setSignupsMap((prev) => ({
-      ...prev,
-      [scheduleId]: [...(prev[scheduleId] || []), newSignup],
-    }));
+      if (isConfigured()) {
+        newSignup = await createSignup({
+          scheduleId,
+          playerName: formData.playerName,
+          playerServer: formData.playerServer,
+          playerClass: formData.playerClass,
+          playerRole: formData.playerRole,
+          playerSpec: formData.playerSpec,
+          contactInfo: formData.contactInfo,
+          wantFragment: formData.wantFragment,
+        });
+      } else {
+        newSignup = {
+          objectId: `signup_${Date.now()}`,
+          playerName: formData.playerName,
+          playerServer: formData.playerServer,
+          playerClass: formData.playerClass,
+          playerRole: formData.playerRole,
+          playerSpec: formData.playerSpec,
+          contactInfo: formData.contactInfo,
+          status: "confirmed",
+        };
+      }
 
-    setSchedules((prev) =>
-      prev.map((s) => {
-        if (s.objectId === scheduleId) {
-          const newCount = s.signupCount + 1;
-          const updates = {
-            signupCount: newCount,
-            status: newCount >= s.raidSize ? "full" : s.status,
-          };
-          // 如果玩家预约了包片且当前状态为 open，则更新为 reserved
-          if (formData.wantFragment && s.fragmentStatus === "open") {
-            updates.fragmentStatus = "reserved";
-            updates.fragmentPlayer = formData.playerName;
-            updates.fragmentServer = formData.playerServer;
+      setSignupsMap((prev) => ({
+        ...prev,
+        [scheduleId]: [...(prev[scheduleId] || []), newSignup],
+      }));
+
+      setSchedules((prev) =>
+        prev.map((s) => {
+          if (s.objectId === scheduleId) {
+            const newCount = s.signupCount + 1;
+            const updates = {
+              signupCount: newCount,
+              status: newCount >= s.raidSize ? "full" : s.status,
+            };
+            if (formData.wantFragment && s.fragmentStatus === "open") {
+              updates.fragmentStatus = "reserved";
+              updates.fragmentPlayer = formData.playerName;
+              updates.fragmentServer = formData.playerServer;
+            }
+            return { ...s, ...updates };
           }
-          return { ...s, ...updates };
-        }
-        return s;
-      })
-    );
+          return s;
+        })
+      );
 
-    // 保存到 localStorage
-    localStorage.setItem(`signup_${scheduleId}`, newSignup.objectId);
-    setCurrentPlayerId(newSignup.objectId);
-    showToast("报名成功", "success");
+      localStorage.setItem(`signup_${scheduleId}`, newSignup.objectId);
+      setCurrentPlayerId(newSignup.objectId);
+      showToast("报名成功", "success");
+    } catch (error) {
+      console.error("报名失败:", error);
+      showToast("报名失败，请重试", "error");
+    }
   };
 
   // 取消报名
-  const handleCancelSignup = (scheduleId) => {
+  const handleCancelSignup = async (scheduleId) => {
     const signupId = localStorage.getItem(`signup_${scheduleId}`);
     if (!signupId) return;
 
-    setSignupsMap((prev) => ({
-      ...prev,
-      [scheduleId]: prev[scheduleId].filter((s) => s.objectId !== signupId),
-    }));
+    try {
+      if (isConfigured()) {
+        await cancelSignupService(signupId);
+      }
 
-    setSchedules((prev) =>
-      prev.map((s) => {
-        if (s.objectId === scheduleId) {
-          const newCount = Math.max(0, s.signupCount - 1);
-          return {
-            ...s,
-            signupCount: newCount,
-            status: newCount < s.raidSize && s.status === "full" ? "recruiting" : s.status,
-          };
-        }
-        return s;
-      })
-    );
+      setSignupsMap((prev) => ({
+        ...prev,
+        [scheduleId]: prev[scheduleId].filter((s) => s.objectId !== signupId),
+      }));
 
-    localStorage.removeItem(`signup_${scheduleId}`);
-    setCurrentPlayerId(null);
-    showToast("已取消报名", "info");
+      setSchedules((prev) =>
+        prev.map((s) => {
+          if (s.objectId === scheduleId) {
+            const newCount = Math.max(0, s.signupCount - 1);
+            return {
+              ...s,
+              signupCount: newCount,
+              status: newCount < s.raidSize && s.status === "full" ? "recruiting" : s.status,
+            };
+          }
+          return s;
+        })
+      );
+
+      localStorage.removeItem(`signup_${scheduleId}`);
+      setCurrentPlayerId(null);
+      showToast("已取消报名", "info");
+    } catch (error) {
+      console.error("取消报名失败:", error);
+      showToast("取消失败，请重试", "error");
+    }
   };
 
   // 月份切换

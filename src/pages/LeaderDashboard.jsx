@@ -5,11 +5,15 @@ import DayRaidsPanel from "../components/DayRaidsPanel";
 import QRCodeCard from "../components/QRCodeCard";
 import ClassIcon from "../components/ClassIcon";
 import { TeamConfigPanel } from "../components/TeamConfig";
+import { getLeaderByShareId, verifyPassword } from "../services/leancloud/leaderService";
+import { getSchedulesByLeader, createSchedule, deleteSchedule as deleteScheduleService } from "../services/leancloud/scheduleService";
+import { getSignupsBySchedule } from "../services/leancloud/signupService";
 import { mockLeader, mockSchedules, mockSignups } from "../utils/mockData";
 import { RAID_INSTANCES, SERVERS, WEEKDAYS } from "../utils/constants";
 import { CLASS_DATA, getSpecsByClassId, getSpecById } from "../utils/classRoleMap";
 import { generateShareUrl, getWeekKey, isSameDay, getScheduleDate } from "../utils/helpers";
 import { useToast } from "../components/Toast";
+import { isConfigured } from "../services/leancloud";
 
 /**
  * 团长管理面板
@@ -45,23 +49,75 @@ export default function LeaderDashboard() {
   const [calendarMonth, setCalendarMonth] = useState(today.getMonth() + 1);
   const [calendarYear, setCalendarYear] = useState(today.getFullYear());
 
-  // 模拟数据加载
+  // 数据加载
   useEffect(() => {
-    setLeader(mockLeader);
-    setSchedules(mockSchedules);
-    setSignupsMap(mockSignups);
+    async function loadData() {
+      if (isConfigured()) {
+        try {
+          // 从 LeanCloud 加载
+          const leaderData = await getLeaderByShareId(shareId);
+          if (leaderData) {
+            setLeader(leaderData);
+            const schedulesData = await getSchedulesByLeader(leaderData.objectId);
+            setSchedules(schedulesData);
+
+            // 加载各团次的报名
+            const signups = {};
+            for (const schedule of schedulesData) {
+              signups[schedule.objectId] = await getSignupsBySchedule(schedule.objectId);
+            }
+            setSignupsMap(signups);
+          }
+        } catch (error) {
+          console.error("加载数据失败:", error);
+          // Fallback to mock data
+          setLeader(mockLeader);
+          setSchedules(mockSchedules);
+          setSignupsMap(mockSignups);
+        }
+      } else {
+        // 使用 mock 数据（无 LeanCloud 配置时）
+        setLeader(mockLeader);
+        setSchedules(mockSchedules);
+        setSignupsMap(mockSignups);
+      }
+    }
+    loadData();
   }, [shareId]);
 
   // 验证密码
   useEffect(() => {
     const pwd = searchParams.get("pwd");
-    if (pwd && pwd === mockLeader.editPassword) {
-      setIsAuthenticated(true);
-      setShowPasswordModal(false);
-      sessionStorage.setItem(`auth_${shareId}`, "true");
-    } else if (sessionStorage.getItem(`auth_${shareId}`) === "true") {
-      setIsAuthenticated(true);
-      setShowPasswordModal(false);
+
+    if (isConfigured()) {
+      // LeanCloud 模式
+      if (pwd) {
+        // 验证 URL 中的密码
+        getLeaderByShareId(shareId).then((leaderData) => {
+          if (leaderData) {
+            verifyPassword(leaderData, pwd).then((valid) => {
+              if (valid) {
+                setIsAuthenticated(true);
+                setShowPasswordModal(false);
+                sessionStorage.setItem(`auth_${shareId}`, "true");
+              }
+            });
+          }
+        });
+      } else if (sessionStorage.getItem(`auth_${shareId}`) === "true") {
+        setIsAuthenticated(true);
+        setShowPasswordModal(false);
+      }
+    } else {
+      // Mock 模式
+      if (pwd && pwd === mockLeader.editPassword) {
+        setIsAuthenticated(true);
+        setShowPasswordModal(false);
+        sessionStorage.setItem(`auth_${shareId}`, "true");
+      } else if (sessionStorage.getItem(`auth_${shareId}`) === "true") {
+        setIsAuthenticated(true);
+        setShowPasswordModal(false);
+      }
     }
   }, [shareId, searchParams]);
 
@@ -72,15 +128,31 @@ export default function LeaderDashboard() {
     }
   }, [showAddModal]);
 
-  const handlePasswordSubmit = () => {
-    if (passwordInput === mockLeader.editPassword) {
-      setIsAuthenticated(true);
-      setShowPasswordModal(false);
-      setAuthError("");
-      sessionStorage.setItem(`auth_${shareId}`, "true");
+  const handlePasswordSubmit = async () => {
+    if (isConfigured()) {
+      const leaderData = await getLeaderByShareId(shareId);
+      if (leaderData) {
+        const valid = await verifyPassword(leaderData, passwordInput);
+        if (valid) {
+          setIsAuthenticated(true);
+          setShowPasswordModal(false);
+          setAuthError("");
+          sessionStorage.setItem(`auth_${shareId}`, "true");
+        } else {
+          setAuthError("密码错误");
+          setPasswordInput("");
+        }
+      }
     } else {
-      setAuthError("密码错误");
-      setPasswordInput("");
+      if (passwordInput === mockLeader.editPassword) {
+        setIsAuthenticated(true);
+        setShowPasswordModal(false);
+        setAuthError("");
+        sessionStorage.setItem(`auth_${shareId}`, "true");
+      } else {
+        setAuthError("密码错误");
+        setPasswordInput("");
+      }
     }
   };
 
@@ -121,7 +193,7 @@ export default function LeaderDashboard() {
     setShowAddModal(true);
   };
 
-  const handleAddSchedule = () => {
+  const handleAddSchedule = async () => {
     if (newSchedule.instanceIds.length === 0) {
       showToast("请至少选择一个副本", "error");
       return;
@@ -132,11 +204,12 @@ export default function LeaderDashboard() {
     }
     const instances = RAID_INSTANCES.filter((r) => newSchedule.instanceIds.includes(r.id));
     const totalSize = instances.reduce((sum, inst) => sum + (inst.size || 25), 0);
-    const schedule = {
-      objectId: `schedule_${Date.now()}`,
-      leader: { objectId: leader?.objectId },
-      instanceIds: newSchedule.instanceIds,
+    const firstInstance = instances[0];
+
+    const scheduleData = {
+      leaderId: leader.objectId,
       instanceId: newSchedule.instanceIds[0],
+      instanceName: firstInstance?.name || "",
       raidSize: totalSize,
       characterName: newSchedule.characterName,
       characterClass: newSchedule.characterClass,
@@ -145,37 +218,38 @@ export default function LeaderDashboard() {
       dayOfWeek: parseInt(newSchedule.dayOfWeek),
       startTime: newSchedule.startTime,
       weekKey: newSchedule.weekKey || getWeekKey(selectedDate),
-      fragmentEnabled: newSchedule.fragmentEnabled && instances.some((inst) => inst.hasFragment),
-      fragmentStatus: null,
-      fragmentPlayer: null,
-      fragmentServer: null,
-      signupCount: 0,
-      status: "recruiting",
-      note: newSchedule.note,
       teamConfig: newSchedule.teamConfig,
+      fragmentEnabled: newSchedule.fragmentEnabled && instances.some((inst) => inst.hasFragment),
     };
 
-    setSchedules((prev) => [...prev, schedule]);
-    setSignupsMap((prev) => ({ ...prev, [schedule.objectId]: [] }));
+    try {
+      const schedule = await createSchedule(scheduleData);
 
-    // 记录到最近使用的配置
-    const tc = newSchedule.teamConfig;
-    if (tc) {
-      setRecentTeamConfigs((prev) => {
-        const filtered = prev.filter(
-          (r) => !(r.tank === tc.tank && r.healer === tc.healer && r.dps === tc.dps && JSON.stringify(r.specRequirements) === JSON.stringify(tc.specRequirements))
-        );
-        return [{ ...tc, usedAt: Date.now() }, ...filtered].slice(0, 3);
-      });
+      setSchedules((prev) => [...prev, schedule]);
+      setSignupsMap((prev) => ({ ...prev, [schedule.objectId]: [] }));
+
+      // 记录到最近使用的配置
+      const tc = newSchedule.teamConfig;
+      if (tc) {
+        setRecentTeamConfigs((prev) => {
+          const filtered = prev.filter(
+            (r) => !(r.tank === tc.tank && r.healer === tc.healer && r.dps === tc.dps && JSON.stringify(r.specRequirements) === JSON.stringify(tc.specRequirements))
+          );
+          return [{ ...tc, usedAt: Date.now() }, ...filtered].slice(0, 3);
+        });
+      }
+
+      // 记住副本选择
+      if (newSchedule.instanceIds.length > 0) {
+        setLastSelectedInstance(newSchedule.instanceIds);
+      }
+
+      setShowAddModal(false);
+      showToast("团次添加成功", "success");
+    } catch (error) {
+      console.error("添加团次失败:", error);
+      showToast("添加失败，请重试", "error");
     }
-
-    // 记住副本选择
-    if (newSchedule.instanceIds.length > 0) {
-      setLastSelectedInstance(newSchedule.instanceIds);
-    }
-
-    setShowAddModal(false);
-    showToast("团次添加成功", "success");
   };
 
   const handleRemoveSignup = (scheduleId, signupId) => {
@@ -189,14 +263,22 @@ export default function LeaderDashboard() {
     showToast("已移除报名", "info");
   };
 
-  const handleDeleteSchedule = (scheduleId) => {
-    setSchedules((prev) => prev.filter((s) => s.objectId !== scheduleId));
-    setSignupsMap((prev) => {
-      const newMap = { ...prev };
-      delete newMap[scheduleId];
-      return newMap;
-    });
-    showToast("已取消开团", "info");
+  const handleDeleteSchedule = async (scheduleId) => {
+    try {
+      if (isConfigured()) {
+        await deleteScheduleService(scheduleId);
+      }
+      setSchedules((prev) => prev.filter((s) => s.objectId !== scheduleId));
+      setSignupsMap((prev) => {
+        const newMap = { ...prev };
+        delete newMap[scheduleId];
+        return newMap;
+      });
+      showToast("已取消开团", "info");
+    } catch (error) {
+      console.error("删除团次失败:", error);
+      showToast("删除失败，请重试", "error");
+    }
   };
 
   // 模板管理

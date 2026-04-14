@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { SERVERS } from "../utils/constants";
-import { generateShareId } from "../utils/helpers";
+import { createLeader } from "../services/leancloud/leaderService";
 
 /**
  * 团长创建页
@@ -62,15 +62,23 @@ export default function CreateLeader() {
 
     setIsSubmitting(true);
 
-    // 模拟创建（Phase 2 会接入 LeanCloud）
-    const shareId = generateShareId();
-    const validCharacters = form.characters.filter((c) => c.trim());
+    try {
+      const validCharacters = form.characters.filter((c) => c.trim()).map(name => ({ name }));
 
-    // 模拟延迟
-    await new Promise((resolve) => setTimeout(resolve, 500));
+      const leader = await createLeader({
+        nickname: form.nickname.trim(),
+        server: form.server,
+        characters: validCharacters,
+        editPassword: form.editPassword,
+      });
 
-    // 跳转管理面板
-    navigate(`/leader/${shareId}?pwd=${form.editPassword}`);
+      // 跳转管理面板
+      navigate(`/leader/${leader.shareId}?pwd=${form.editPassword}`);
+    } catch (error) {
+      console.error("创建失败:", error);
+      setErrors({ submit: "创建失败，请重试" });
+      setIsSubmitting(false);
+    }
   };
 
   return (
