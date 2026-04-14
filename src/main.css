@@ -318,6 +318,7 @@ body {
   max-height: 90vh;
   overflow-y: auto;
   animation: slideUp var(--transition-normal) ease;
+  box-sizing: border-box;
 }
 
 /* Skeleton Loading */

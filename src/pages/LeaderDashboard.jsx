@@ -477,6 +477,8 @@ export default function LeaderDashboard() {
                       flexWrap: "wrap",
                       gap: "6px",
                       marginBottom: "8px",
+                      maxWidth: "100%",
+                      overflow: "hidden",
                     }}
                   >
                     {instancePresets.map((preset, idx) => (
@@ -494,26 +496,30 @@ export default function LeaderDashboard() {
                           border: "1px solid var(--border-color)",
                           background: "var(--bg-tertiary)",
                           color: "var(--text-secondary)",
-                          fontSize: "12px",
+                          fontSize: "11px",
                           cursor: "pointer",
                           display: "flex",
                           alignItems: "center",
                           gap: "4px",
+                          maxWidth: "100%",
+                          overflow: "hidden",
                         }}
                       >
-                        {preset.map((id) => RAID_INSTANCES.find((i) => i.id === id)?.shortLabel || id).join("+")}
+                        <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                          {preset.map((id) => RAID_INSTANCES.find((i) => i.id === id)?.shortLabel || id).join("+")}
+                        </span>
                         <span
                           onClick={(e) => {
                             e.stopPropagation();
                             setInstancePresets((prev) => prev.filter((_, i) => i !== idx));
                           }}
                           style={{
-                            marginLeft: "2px",
                             color: "var(--text-muted)",
                             fontSize: "10px",
+                            flexShrink: 0,
                           }}
                         >
-                          ✕
+                          ×
                         </span>
                       </button>
                     ))}
