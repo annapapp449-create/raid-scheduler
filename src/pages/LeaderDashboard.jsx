@@ -5,15 +5,15 @@ import DayRaidsPanel from "../components/DayRaidsPanel";
 import QRCodeCard from "../components/QRCodeCard";
 import ClassIcon from "../components/ClassIcon";
 import { TeamConfigPanel } from "../components/TeamConfig";
-import { getLeaderByShareId, verifyPassword } from "../services/leancloud/leaderService";
-import { getSchedulesByLeader, createSchedule, deleteSchedule as deleteScheduleService } from "../services/leancloud/scheduleService";
-import { getSignupsBySchedule } from "../services/leancloud/signupService";
+import { getLeaderByShareId, verifyPassword } from "../services/api";
+import { getSchedulesByLeader, createSchedule, deleteSchedule as deleteScheduleService } from "../services/api";
+import { getSignupsBySchedule } from "../services/api";
 import { mockLeader, mockSchedules, mockSignups } from "../utils/mockData";
 import { RAID_INSTANCES, SERVERS, WEEKDAYS } from "../utils/constants";
 import { CLASS_DATA, getSpecsByClassId, getSpecById } from "../utils/classRoleMap";
 import { generateShareUrl, generateManageUrl, getWeekKey, isSameDay, getScheduleDate, copyToClipboard, purgeLeaderData } from "../utils/helpers";
 import { useToast } from "../components/Toast";
-import { isConfigured } from "../services/leancloud";
+
 
 
 /**
@@ -256,9 +256,7 @@ export default function LeaderDashboard() {
 
   const handleDeleteSchedule = async (scheduleId) => {
     try {
-      if (isConfigured()) {
-        await deleteScheduleService(scheduleId);
-      }
+      await deleteScheduleService(scheduleId);
       setSchedules((prev) => prev.filter((s) => s.objectId !== scheduleId));
       setSignupsMap((prev) => {
         const newMap = { ...prev };

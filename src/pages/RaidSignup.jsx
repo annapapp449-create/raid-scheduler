@@ -4,9 +4,9 @@ import RaidCalendar from "../components/RaidCalendar";
 import DayRaidsPanel from "../components/DayRaidsPanel";
 import { useToast } from "../components/Toast";
 import { isSameDay, getScheduleDate } from "../utils/helpers";
-import { getLeaderByShareId } from "../services/leancloud/leaderService";
-import { getSchedulesByLeader } from "../services/leancloud/scheduleService";
-import { getSignupsBySchedule, createSignup, cancelSignup as cancelSignupService } from "../services/leancloud/signupService";
+import { getLeaderByShareId } from "../services/api";
+import { getSchedulesByLeader } from "../services/api";
+import { getSignupsBySchedule, createSignup, cancelSignup as cancelSignupService } from "../services/api";
 
 /**
  * 玩家报名页

@@ -1,11 +1,12 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { SERVERS } from "../utils/constants";
-import { createLeader } from "../services/leancloud/leaderService";
+import { createLeader } from "../services/api";
 import {
   saveMyLeader,
   getMyLeaders,
   removeMyLeader,
+  purgeLeaderData,
   generateManageUrl,
   copyToClipboard,
 } from "../utils/helpers";
@@ -14,14 +15,14 @@ import {
  * 团长入口页
  *
  * 逻辑：
- *   - 有 1 个历史团长 → 自动跳转管理页
+ *   - 有 1 个历史团长 → 显示快速入口（可进入管理页或清除重新注册）
  *   - 有多个历史团长 → 显示选择列表
  *   - 没有历史       → 显示创建表单
  */
 export default function CreateLeader() {
   const navigate = useNavigate();
 
-  // view: 'loading' | 'pick' | 'create' | 'success'
+  // view: 'loading' | 'single' | 'pick' | 'manage' | 'create' | 'success'
   const [view, setView] = useState("loading");
   const [myLeaders, setMyLeaders] = useState([]);
   const [createdLeader, setCreatedLeader] = useState(null);
@@ -38,12 +39,37 @@ export default function CreateLeader() {
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // 确认清除弹窗
+  const [showPurgeConfirm, setShowPurgeConfirm] = useState(false);
+  const [purgeTarget, setPurgeTarget] = useState(null);
+
+  const handlePurge = (leader) => {
+    setPurgeTarget(leader);
+    setShowPurgeConfirm(true);
+  };
+
+  const confirmPurge = () => {
+    if (!purgeTarget) return;
+    purgeLeaderData(purgeTarget.shareId);
+    setShowPurgeConfirm(false);
+    setPurgeTarget(null);
+    const updated = getMyLeaders();
+    setMyLeaders(updated);
+    if (updated.length === 0) {
+      setView("create");
+    } else if (updated.length === 1) {
+      setView("single");
+    } else {
+      setView("pick");
+    }
+  };
+
   // 初始化：根据历史决定视图
   useEffect(() => {
     const leaders = getMyLeaders();
     if (leaders.length === 1) {
-      // 只有一个团长，直接跳转
-      navigate(`/leader/${leaders[0].shareId}`, { replace: true });
+      setMyLeaders(leaders);
+      setView("single");
     } else if (leaders.length > 1) {
       setMyLeaders(leaders);
       setView("pick");
@@ -58,6 +84,163 @@ export default function CreateLeader() {
       <div className="container" style={{ paddingTop: "120px", textAlign: "center" }}>
         <div style={{ fontSize: "32px", marginBottom: "16px" }}>⚔️</div>
         <p style={{ color: "var(--text-secondary)", fontSize: "14px" }}>正在跳转...</p>
+      </div>
+    );
+  }
+
+  // ── 清除确认弹窗 ─────────────────────────────────────────
+  const purgeConfirmModal = showPurgeConfirm && purgeTarget && (
+    <div
+      style={{
+        position: "fixed",
+        inset: 0,
+        background: "rgba(0,0,0,0.6)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        zIndex: 9999,
+        padding: "20px",
+      }}
+      onClick={() => setShowPurgeConfirm(false)}
+    >
+      <div
+        style={{
+          background: "var(--bg-secondary)",
+          borderRadius: "var(--radius-card)",
+          padding: "28px 24px",
+          maxWidth: "340px",
+          width: "100%",
+          textAlign: "center",
+        }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div style={{ fontSize: "32px", marginBottom: "12px" }}>⚠️</div>
+        <h3 style={{ margin: "0 0 8px", fontSize: "16px", fontWeight: 600, color: "var(--text-primary)" }}>
+          确认清除信息？
+        </h3>
+        <p style={{ margin: "0 0 6px", fontSize: "13px", color: "var(--text-secondary)", lineHeight: 1.6 }}>
+          将清除 <strong style={{ color: "var(--text-primary)" }}>{purgeTarget.nickname}</strong> 在本机的所有数据
+        </p>
+        <p style={{ margin: "0 0 20px", fontSize: "12px", color: "var(--text-muted)", lineHeight: 1.5 }}>
+          包括团长信息、团次和报名记录，清除后不可恢复。
+          清除后可重新注册新的团长身份。
+        </p>
+        <div style={{ display: "flex", gap: "10px" }}>
+          <button
+            onClick={() => setShowPurgeConfirm(false)}
+            className="btn btn-secondary"
+            style={{ flex: 1 }}
+          >
+            取消
+          </button>
+          <button
+            onClick={confirmPurge}
+            style={{
+              flex: 1,
+              padding: "12px",
+              borderRadius: "var(--radius-btn)",
+              background: "var(--color-blood)",
+              border: "none",
+              color: "#fff",
+              fontSize: "14px",
+              fontWeight: 600,
+              cursor: "pointer",
+            }}
+          >
+            确认清除
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
+  // ── 唯一团长快速入口 ─────────────────────────────────────
+  if (view === "single" && myLeaders.length === 1) {
+    const leader = myLeaders[0];
+    return (
+      <div className="container" style={{ paddingTop: "40px", paddingBottom: "40px" }}>
+        {purgeConfirmModal}
+        <div style={{ textAlign: "center", marginBottom: "28px" }}>
+          <div style={{ fontSize: "36px", marginBottom: "10px" }}>⚔️</div>
+          <h1 style={{ fontSize: "20px", fontWeight: 700, color: "var(--color-frost)", margin: "0 0 6px" }}>
+            欢迎回来
+          </h1>
+          <p style={{ fontSize: "13px", color: "var(--text-secondary)", margin: 0 }}>
+            点击进入你的管理面板
+          </p>
+        </div>
+
+        {/* 团长卡片 */}
+        <button
+          onClick={() => navigate(`/leader/${leader.shareId}`)}
+          style={{
+            width: "100%",
+            background: "var(--bg-secondary)",
+            border: "1px solid var(--bg-tertiary)",
+            borderRadius: "var(--radius-card)",
+            padding: "20px",
+            display: "flex",
+            alignItems: "center",
+            gap: "14px",
+            cursor: "pointer",
+            textAlign: "left",
+            transition: "border-color 0.15s",
+            marginBottom: "16px",
+          }}
+          onMouseEnter={e => e.currentTarget.style.borderColor = "var(--color-frost)"}
+          onMouseLeave={e => e.currentTarget.style.borderColor = "var(--bg-tertiary)"}
+        >
+          <div
+            style={{
+              width: "48px",
+              height: "48px",
+              borderRadius: "50%",
+              background: "linear-gradient(135deg, var(--color-frost) 0%, var(--color-frost-dim) 100%)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontSize: "20px",
+              fontWeight: 700,
+              color: "var(--bg-primary)",
+              flexShrink: 0,
+            }}
+          >
+            {leader.nickname.charAt(0)}
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <p style={{ margin: "0 0 3px", fontSize: "16px", fontWeight: 600, color: "var(--text-primary)" }}>
+              {leader.nickname}
+            </p>
+            <p style={{ margin: 0, fontSize: "12px", color: "var(--text-secondary)" }}>
+              {leader.server}
+            </p>
+          </div>
+          <span style={{ color: "var(--color-frost)", fontSize: "20px", flexShrink: 0 }}>›</span>
+        </button>
+
+        {/* 底部操作区 */}
+        <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+          <button
+            onClick={() => setView("create")}
+            className="btn btn-secondary"
+          >
+            ＋ 创建新的团长身份
+          </button>
+          <button
+            onClick={() => handlePurge(leader)}
+            style={{
+              padding: "8px",
+              background: "none",
+              border: "none",
+              color: "var(--text-muted)",
+              fontSize: "12px",
+              cursor: "pointer",
+              textDecoration: "underline",
+            }}
+          >
+            清除本机信息并重新注册
+          </button>
+        </div>
       </div>
     );
   }
@@ -164,6 +347,7 @@ export default function CreateLeader() {
   if (view === "manage") {
     return (
       <div className="container" style={{ paddingTop: "40px", paddingBottom: "40px" }}>
+        {purgeConfirmModal}
         <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "24px" }}>
           <button
             onClick={() => setView("pick")}
@@ -231,17 +415,10 @@ export default function CreateLeader() {
                   flexShrink: 0,
                 }}
               >
-                {copied === l.shareId ? "✅" : "复制链接"}
+                {copied === l.shareId ? "已复制" : "复制链接"}
               </button>
               <button
-                onClick={() => {
-                  removeMyLeader(l.shareId);
-                  const updated = getMyLeaders();
-                  setMyLeaders(updated);
-                  if (updated.length === 0) setView("create");
-                  else if (updated.length === 1) navigate(`/leader/${updated[0].shareId}`, { replace: true });
-                  else setView("pick");
-                }}
+                onClick={() => handlePurge(l)}
                 style={{
                   padding: "6px 10px",
                   borderRadius: "var(--radius-btn)",
@@ -406,7 +583,7 @@ export default function CreateLeader() {
       {/* 返回按钮（有历史时显示） */}
       {myLeaders.length > 0 && (
         <button
-          onClick={() => setView(myLeaders.length === 1 ? "pick" : "pick")}
+          onClick={() => setView(myLeaders.length === 1 ? "single" : "pick")}
           style={{ background: "none", border: "none", color: "var(--text-secondary)", fontSize: "14px", cursor: "pointer", padding: "0 0 20px", display: "flex", alignItems: "center", gap: "4px" }}
         >
           ‹ 返回
