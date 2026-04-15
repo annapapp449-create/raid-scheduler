@@ -784,7 +784,7 @@ export default function LeaderDashboard() {
               </div>
 
               {/* 包片开关 */}
-              {RAID_INSTANCES.find((r) => r.id === newSchedule.instanceId)?.hasFragment && (
+              {RAID_INSTANCES.some((r) => newSchedule.instanceIds.includes(r.id) && r.hasFragment) && (
                 <div
                   style={{
                     padding: "12px",
