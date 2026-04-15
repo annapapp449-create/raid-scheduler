@@ -199,7 +199,8 @@ export default function LeaderDashboard() {
     const scheduleData = {
       leaderId: leader.objectId,
       instanceId: newSchedule.instanceIds[0],
-      instanceName: firstInstance?.name || "",
+      instanceIds: newSchedule.instanceIds,
+      instanceName: instances.map((i) => i.label).join(" + ") || firstInstance?.label || "",
       raidSize: 25,
       characterName: newSchedule.characterName,
       characterClass: newSchedule.characterClass,

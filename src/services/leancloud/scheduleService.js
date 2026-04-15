@@ -4,9 +4,11 @@ import { isConfigured } from './index';
 const CLASS_NAME = 'Schedule';
 
 // Create a new schedule
-export async function createSchedule({ leaderId, instanceId, instanceName, raidSize, characterName, characterClass, server, dayOfWeek, startTime, weekKey, teamConfig, fragmentEnabled = false }) {
+export async function createSchedule({ leaderId, instanceId, instanceIds, instanceName, raidSize, characterName, characterClass, server, dayOfWeek, startTime, weekKey, teamConfig, fragmentEnabled = false }) {
+  const allInstanceIds = instanceIds || (instanceId ? [instanceId] : []);
   const data = {
-    instanceId,
+    instanceId: allInstanceIds[0] || instanceId,
+    instanceIds: allInstanceIds,
     instanceName,
     raidSize,
     characterName,

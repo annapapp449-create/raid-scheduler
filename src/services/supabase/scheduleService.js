@@ -4,16 +4,19 @@ const TABLE = 'schedules';
 
 // Create a new schedule
 export async function createSchedule({
-  leaderId, instanceId, instanceName, raidSize,
+  leaderId, instanceId, instanceIds, instanceName, raidSize,
   characterName, characterClass, server,
   dayOfWeek, startTime, weekKey, teamConfig,
   fragmentEnabled = false,
 }) {
   const supabase = getSupabase();
 
+  const allInstanceIds = instanceIds || (instanceId ? [instanceId] : []);
+
   const row = {
     leader_id: leaderId,
-    instance_id: instanceId,
+    instance_id: allInstanceIds[0] || instanceId,
+    instance_ids: allInstanceIds,
     instance_name: instanceName,
     raid_size: raidSize,
     character_name: characterName,
@@ -124,6 +127,7 @@ function mapRow(row) {
     objectId: row.id,
     leaderId: row.leader_id,
     instanceId: row.instance_id,
+    instanceIds: row.instance_ids || (row.instance_id ? [row.instance_id] : []),
     instanceName: row.instance_name,
     raidSize: row.raid_size,
     characterName: row.character_name,
