@@ -89,11 +89,44 @@ export const copyToClipboard = async (text) => {
 };
 
 /**
- * 生成团分享链接
+ * 生成团分享链接（玩家报名页）
  */
 export const generateShareUrl = (shareId) => {
   const baseUrl = window.location.origin;
   return `${baseUrl}/#/r/${shareId}`;
+};
+
+/**
+ * 生成团长管理链接
+ */
+export const generateManageUrl = (shareId) => {
+  const baseUrl = window.location.origin;
+  return `${baseUrl}/#/leader/${shareId}`;
+};
+
+/**
+ * 保存团长到本机历史（my_leaders）
+ */
+export const saveMyLeader = ({ shareId, nickname, server }) => {
+  const saved = JSON.parse(localStorage.getItem('my_leaders') || '[]');
+  const filtered = saved.filter(l => l.shareId !== shareId);
+  const entry = { shareId, nickname, server, savedAt: Date.now() };
+  localStorage.setItem('my_leaders', JSON.stringify([entry, ...filtered].slice(0, 10)));
+};
+
+/**
+ * 读取本机历史团长列表
+ */
+export const getMyLeaders = () => {
+  return JSON.parse(localStorage.getItem('my_leaders') || '[]');
+};
+
+/**
+ * 删除本机历史团长
+ */
+export const removeMyLeader = (shareId) => {
+  const saved = JSON.parse(localStorage.getItem('my_leaders') || '[]');
+  localStorage.setItem('my_leaders', JSON.stringify(saved.filter(l => l.shareId !== shareId)));
 };
 
 /**

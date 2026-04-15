@@ -11,7 +11,7 @@ import { getSignupsBySchedule } from "../services/leancloud/signupService";
 import { mockLeader, mockSchedules, mockSignups } from "../utils/mockData";
 import { RAID_INSTANCES, SERVERS, WEEKDAYS } from "../utils/constants";
 import { CLASS_DATA, getSpecsByClassId, getSpecById } from "../utils/classRoleMap";
-import { generateShareUrl, getWeekKey, isSameDay, getScheduleDate } from "../utils/helpers";
+import { generateShareUrl, generateManageUrl, getWeekKey, isSameDay, getScheduleDate, copyToClipboard } from "../utils/helpers";
 import { useToast } from "../components/Toast";
 import { isConfigured } from "../services/leancloud";
 
@@ -43,6 +43,7 @@ export default function LeaderDashboard() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [showInstanceDropdown, setShowInstanceDropdown] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
+  const [copiedManage, setCopiedManage] = useState(false);
 
   // 日历状态
   const today = new Date();
@@ -364,7 +365,7 @@ export default function LeaderDashboard() {
         <p style={{ margin: "0 0 12px", fontSize: "13px", color: "var(--text-secondary)" }}>
           {leader.server} · {leader.characters.length}个角色
         </p>
-        <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+        <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", marginBottom: "12px" }}>
           {leader.characters.map((char, i) => (
             <span
               key={i}
@@ -384,6 +385,28 @@ export default function LeaderDashboard() {
             </span>
           ))}
         </div>
+        {/* 复制管理链接 */}
+        <button
+          onClick={async () => {
+            const ok = await copyToClipboard(generateManageUrl(shareId));
+            if (ok) {
+              setCopiedManage(true);
+              showToast("管理链接已复制，建议保存到微信收藏", "success");
+              setTimeout(() => setCopiedManage(false), 2000);
+            }
+          }}
+          style={{
+            padding: "6px 14px",
+            borderRadius: "var(--radius-btn)",
+            background: "var(--bg-tertiary)",
+            border: "1px solid var(--color-bone)",
+            color: copiedManage ? "var(--color-frost)" : "var(--text-secondary)",
+            fontSize: "12px",
+            cursor: "pointer",
+          }}
+        >
+          {copiedManage ? "✅ 已复制" : "🔗 复制管理链接"}
+        </button>
       </div>
 
       {/* 日历 */}
