@@ -130,6 +130,41 @@ export const removeMyLeader = (shareId) => {
 };
 
 /**
+ * 彻底清除本机某个团长的所有数据（团长信息 + 团次 + 报名 + 历史）
+ * 用于团长在本设备上重置/重新注册
+ */
+export const purgeLeaderData = (shareId) => {
+  // 1. 从本机历史移除
+  removeMyLeader(shareId);
+
+  // 2. 找到 leader 的 objectId
+  const leaders = JSON.parse(localStorage.getItem('lc_leaders') || '[]');
+  const leader = leaders.find(l => l.shareId === shareId);
+  const leaderObjectId = leader?.objectId;
+
+  // 3. 从 lc_leaders 移除此团长
+  localStorage.setItem('lc_leaders', JSON.stringify(leaders.filter(l => l.shareId !== shareId)));
+
+  if (!leaderObjectId) return;
+
+  // 4. 找出并移除该团长的团次，顺带收集 scheduleIds
+  const schedules = JSON.parse(localStorage.getItem('lc_schedules') || '[]');
+  const leaderScheduleIds = schedules.filter(s => s.leaderId === leaderObjectId).map(s => s.objectId);
+  localStorage.setItem('lc_schedules', JSON.stringify(schedules.filter(s => s.leaderId !== leaderObjectId)));
+
+  // 5. 移除与这些团次相关的报名
+  if (leaderScheduleIds.length > 0) {
+    const signups = JSON.parse(localStorage.getItem('lc_signups') || '[]');
+    localStorage.setItem('lc_signups', JSON.stringify(signups.filter(s => !leaderScheduleIds.includes(s.scheduleId))));
+    // 同时清理玩家端的本地报名记录指针
+    leaderScheduleIds.forEach(sid => localStorage.removeItem(`signup_${sid}`));
+  }
+
+  // 6. 清理 session 认证标志
+  sessionStorage.removeItem(`auth_${shareId}`);
+};
+
+/**
  * 按角色分组排列报名列表
  * 顺序: tank -> healer -> dps
  */

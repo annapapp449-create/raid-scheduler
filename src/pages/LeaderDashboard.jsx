@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { useParams, useSearchParams } from "react-router-dom";
+import { useParams, useSearchParams, useNavigate } from "react-router-dom";
 import RaidCalendar from "../components/RaidCalendar";
 import DayRaidsPanel from "../components/DayRaidsPanel";
 import QRCodeCard from "../components/QRCodeCard";
@@ -11,7 +11,7 @@ import { getSignupsBySchedule } from "../services/leancloud/signupService";
 import { mockLeader, mockSchedules, mockSignups } from "../utils/mockData";
 import { RAID_INSTANCES, SERVERS, WEEKDAYS } from "../utils/constants";
 import { CLASS_DATA, getSpecsByClassId, getSpecById } from "../utils/classRoleMap";
-import { generateShareUrl, generateManageUrl, getWeekKey, isSameDay, getScheduleDate, copyToClipboard } from "../utils/helpers";
+import { generateShareUrl, generateManageUrl, getWeekKey, isSameDay, getScheduleDate, copyToClipboard, purgeLeaderData } from "../utils/helpers";
 import { useToast } from "../components/Toast";
 import { isConfigured } from "../services/leancloud";
 
@@ -22,6 +22,7 @@ import { isConfigured } from "../services/leancloud";
 export default function LeaderDashboard() {
   const { shareId } = useParams();
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const { showToast, ToastContainer } = useToast();
 
   // 鉴权状态
@@ -339,6 +340,27 @@ export default function LeaderDashboard() {
           )}
           <button onClick={handlePasswordSubmit} className="btn btn-primary" style={{ width: "100%" }}>
             进入管理
+          </button>
+          {/* 清除本机信息并重新注册 */}
+          <button
+            onClick={() => {
+              if (window.confirm("确定清除此团长在本机的所有信息并重新注册吗？\n\n此操作将删除本机保存的团长数据、团次和报名记录，且不可恢复。")) {
+                purgeLeaderData(shareId);
+                navigate("/create", { replace: true });
+              }
+            }}
+            style={{
+              marginTop: "16px",
+              background: "none",
+              border: "none",
+              color: "var(--text-muted)",
+              fontSize: "12px",
+              cursor: "pointer",
+              textDecoration: "underline",
+              padding: "4px 8px",
+            }}
+          >
+            清除本机信息并重新注册
           </button>
         </div>
         <ToastContainer />
