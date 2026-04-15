@@ -74,6 +74,8 @@ export async function getSchedulesByLeader(leaderId) {
       status: r.get('status'),
       fragmentEnabled: r.get('fragmentEnabled'),
       fragmentStatus: r.get('fragmentStatus'),
+      fragmentPlayer: r.get('fragmentPlayer'),
+      fragmentServer: r.get('fragmentServer'),
       teamConfig: r.get('teamConfig'),
     }));
   }
@@ -106,6 +108,8 @@ export async function getSchedulesByWeekKey(weekKey) {
       status: r.get('status'),
       fragmentEnabled: r.get('fragmentEnabled'),
       fragmentStatus: r.get('fragmentStatus'),
+      fragmentPlayer: r.get('fragmentPlayer'),
+      fragmentServer: r.get('fragmentServer'),
       teamConfig: r.get('teamConfig'),
     }));
   }

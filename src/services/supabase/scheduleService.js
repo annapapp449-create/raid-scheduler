@@ -136,6 +136,8 @@ function mapRow(row) {
     status: row.status,
     fragmentEnabled: row.fragment_enabled,
     fragmentStatus: row.fragment_status,
+    fragmentPlayer: row.fragment_player,
+    fragmentServer: row.fragment_server,
     teamConfig: row.team_config,
   };
 }

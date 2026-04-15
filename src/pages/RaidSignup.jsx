@@ -6,7 +6,7 @@ import { useToast } from "../components/Toast";
 import { isSameDay, getScheduleDate } from "../utils/helpers";
 import { getLeaderByShareId } from "../services/api";
 import { getSchedulesByLeader } from "../services/api";
-import { getSignupsBySchedule, createSignup, cancelSignup as cancelSignupService } from "../services/api";
+import { getSignupsBySchedule, createSignup, cancelSignup as cancelSignupService, updateSchedule } from "../services/api";
 
 /**
  * 玩家报名页
@@ -91,23 +91,26 @@ export default function RaidSignup() {
         [scheduleId]: [...(prev[scheduleId] || []), newSignup],
       }));
 
+      const schedule = schedules.find((s) => s.objectId === scheduleId);
+      const newCount = (schedule?.signupCount || 0) + 1;
+      const scheduleUpdates = {
+        signupCount: newCount,
+        status: newCount >= (schedule?.raidSize || 25) ? "full" : schedule?.status,
+      };
+      const fragmentReserved = formData.wantFragment && schedule?.fragmentStatus === "open";
+      if (fragmentReserved) {
+        scheduleUpdates.fragmentStatus = "reserved";
+        scheduleUpdates.fragmentPlayer = formData.playerName;
+        scheduleUpdates.fragmentServer = formData.playerServer;
+      }
+
+      // 持久化到数据库
+      await updateSchedule(scheduleId, scheduleUpdates);
+
       setSchedules((prev) =>
-        prev.map((s) => {
-          if (s.objectId === scheduleId) {
-            const newCount = s.signupCount + 1;
-            const updates = {
-              signupCount: newCount,
-              status: newCount >= s.raidSize ? "full" : s.status,
-            };
-            if (formData.wantFragment && s.fragmentStatus === "open") {
-              updates.fragmentStatus = "reserved";
-              updates.fragmentPlayer = formData.playerName;
-              updates.fragmentServer = formData.playerServer;
-            }
-            return { ...s, ...updates };
-          }
-          return s;
-        })
+        prev.map((s) =>
+          s.objectId === scheduleId ? { ...s, ...scheduleUpdates } : s
+        )
       );
 
       localStorage.setItem(`signup_${scheduleId}`, newSignup.objectId);
