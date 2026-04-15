@@ -385,28 +385,6 @@ export default function LeaderDashboard() {
             </span>
           ))}
         </div>
-        {/* 复制管理链接 */}
-        <button
-          onClick={async () => {
-            const ok = await copyToClipboard(generateManageUrl(shareId));
-            if (ok) {
-              setCopiedManage(true);
-              showToast("管理链接已复制，建议保存到微信收藏", "success");
-              setTimeout(() => setCopiedManage(false), 2000);
-            }
-          }}
-          style={{
-            padding: "6px 14px",
-            borderRadius: "var(--radius-btn)",
-            background: "var(--bg-tertiary)",
-            border: "1px solid var(--color-bone)",
-            color: copiedManage ? "var(--color-frost)" : "var(--text-secondary)",
-            fontSize: "12px",
-            cursor: "pointer",
-          }}
-        >
-          {copiedManage ? "✅ 已复制" : "🔗 复制管理链接"}
-        </button>
       </div>
 
       {/* 日历 */}

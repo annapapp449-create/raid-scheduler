@@ -11,13 +11,23 @@ import {
 } from "../utils/helpers";
 
 /**
- * 团长创建页
- * - 顶部显示本机已保存的团长（我的开团）
- * - 注册成功后展示管理链接，引导保存
+ * 团长入口页
+ *
+ * 逻辑：
+ *   - 有 1 个历史团长 → 自动跳转管理页
+ *   - 有多个历史团长 → 显示选择列表
+ *   - 没有历史       → 显示创建表单
  */
 export default function CreateLeader() {
   const navigate = useNavigate();
 
+  // view: 'loading' | 'pick' | 'create' | 'success'
+  const [view, setView] = useState("loading");
+  const [myLeaders, setMyLeaders] = useState([]);
+  const [createdLeader, setCreatedLeader] = useState(null);
+  const [copied, setCopied] = useState(false);
+
+  // 表单
   const [form, setForm] = useState({
     nickname: "",
     server: SERVERS[0],
@@ -27,34 +37,327 @@ export default function CreateLeader() {
   });
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [myLeaders, setMyLeaders] = useState([]);
-  const [createdLeader, setCreatedLeader] = useState(null); // 注册成功后的数据
-  const [copied, setCopied] = useState(false);
 
+  // 初始化：根据历史决定视图
   useEffect(() => {
-    setMyLeaders(getMyLeaders());
+    const leaders = getMyLeaders();
+    if (leaders.length === 1) {
+      // 只有一个团长，直接跳转
+      navigate(`/leader/${leaders[0].shareId}`, { replace: true });
+    } else if (leaders.length > 1) {
+      setMyLeaders(leaders);
+      setView("pick");
+    } else {
+      setView("create");
+    }
   }, []);
 
-  const addCharacter = () => {
-    if (form.characters.length >= 10) return;
-    setForm((prev) => ({ ...prev, characters: [...prev.characters, ""] }));
-  };
+  // ── 加载中 ──────────────────────────────────────────────
+  if (view === "loading") {
+    return (
+      <div className="container" style={{ paddingTop: "120px", textAlign: "center" }}>
+        <div style={{ fontSize: "32px", marginBottom: "16px" }}>⚔️</div>
+        <p style={{ color: "var(--text-secondary)", fontSize: "14px" }}>正在跳转...</p>
+      </div>
+    );
+  }
 
-  const removeCharacter = (index) => {
-    if (form.characters.length <= 1) return;
-    setForm((prev) => ({
-      ...prev,
-      characters: prev.characters.filter((_, i) => i !== index),
-    }));
-  };
+  // ── 多团长选择 ───────────────────────────────────────────
+  if (view === "pick") {
+    return (
+      <div className="container" style={{ paddingTop: "40px", paddingBottom: "40px" }}>
+        <div style={{ textAlign: "center", marginBottom: "28px" }}>
+          <div style={{ fontSize: "36px", marginBottom: "10px" }}>⚔️</div>
+          <h1 style={{ fontSize: "20px", fontWeight: 700, color: "var(--color-frost)", margin: "0 0 6px" }}>
+            选择你的团长身份
+          </h1>
+          <p style={{ fontSize: "13px", color: "var(--text-secondary)", margin: 0 }}>
+            本机共保存了 {myLeaders.length} 个团长身份
+          </p>
+        </div>
 
-  const updateCharacter = (index, value) => {
-    setForm((prev) => ({
-      ...prev,
-      characters: prev.characters.map((c, i) => (i === index ? value : c)),
-    }));
-  };
+        <div style={{ display: "flex", flexDirection: "column", gap: "10px", marginBottom: "20px" }}>
+          {myLeaders.map((l) => (
+            <button
+              key={l.shareId}
+              onClick={() => navigate(`/leader/${l.shareId}`)}
+              style={{
+                background: "var(--bg-secondary)",
+                border: "1px solid var(--bg-tertiary)",
+                borderRadius: "var(--radius-card)",
+                padding: "16px",
+                display: "flex",
+                alignItems: "center",
+                gap: "14px",
+                cursor: "pointer",
+                textAlign: "left",
+                transition: "border-color 0.15s",
+              }}
+              onMouseEnter={e => e.currentTarget.style.borderColor = "var(--color-frost)"}
+              onMouseLeave={e => e.currentTarget.style.borderColor = "var(--bg-tertiary)"}
+            >
+              {/* 头像 */}
+              <div
+                style={{
+                  width: "44px",
+                  height: "44px",
+                  borderRadius: "50%",
+                  background: "linear-gradient(135deg, var(--color-frost) 0%, var(--color-frost-dim) 100%)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: "18px",
+                  fontWeight: 700,
+                  color: "var(--bg-primary)",
+                  flexShrink: 0,
+                }}
+              >
+                {l.nickname.charAt(0)}
+              </div>
+              {/* 信息 */}
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <p style={{ margin: "0 0 3px", fontSize: "15px", fontWeight: 600, color: "var(--text-primary)" }}>
+                  {l.nickname}
+                </p>
+                <p style={{ margin: 0, fontSize: "12px", color: "var(--text-secondary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {l.server}
+                </p>
+              </div>
+              <span style={{ color: "var(--color-frost)", fontSize: "18px", flexShrink: 0 }}>›</span>
+            </button>
+          ))}
+        </div>
 
+        {/* 删除 + 新建 */}
+        <div style={{ borderTop: "1px solid var(--bg-tertiary)", paddingTop: "16px", display: "flex", flexDirection: "column", gap: "8px" }}>
+          {myLeaders.length > 1 && (
+            <button
+              onClick={() => {
+                // 展开删除模式（简单：显示带删除按钮的列表）
+                setView("manage");
+              }}
+              style={{
+                padding: "10px",
+                borderRadius: "var(--radius-btn)",
+                background: "transparent",
+                border: "1px dashed var(--color-bone)",
+                color: "var(--text-muted)",
+                fontSize: "13px",
+                cursor: "pointer",
+              }}
+            >
+              管理列表
+            </button>
+          )}
+          <button
+            onClick={() => setView("create")}
+            className="btn btn-secondary"
+          >
+            ＋ 创建新的团长身份
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // ── 管理列表（带删除按钮） ───────────────────────────────
+  if (view === "manage") {
+    return (
+      <div className="container" style={{ paddingTop: "40px", paddingBottom: "40px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "24px" }}>
+          <button
+            onClick={() => setView("pick")}
+            style={{ background: "none", border: "none", color: "var(--text-secondary)", fontSize: "20px", cursor: "pointer", padding: 0 }}
+          >
+            ‹
+          </button>
+          <h2 style={{ margin: 0, fontSize: "18px", fontWeight: 600 }}>管理本机身份</h2>
+        </div>
+
+        <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+          {myLeaders.map((l) => (
+            <div
+              key={l.shareId}
+              style={{
+                background: "var(--bg-secondary)",
+                borderRadius: "var(--radius-card)",
+                padding: "14px 16px",
+                display: "flex",
+                alignItems: "center",
+                gap: "12px",
+              }}
+            >
+              <div
+                style={{
+                  width: "40px",
+                  height: "40px",
+                  borderRadius: "50%",
+                  background: "linear-gradient(135deg, var(--color-frost) 0%, var(--color-frost-dim) 100%)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: "16px",
+                  fontWeight: 700,
+                  color: "var(--bg-primary)",
+                  flexShrink: 0,
+                }}
+              >
+                {l.nickname.charAt(0)}
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <p style={{ margin: "0 0 2px", fontSize: "14px", fontWeight: 600, color: "var(--text-primary)" }}>
+                  {l.nickname}
+                </p>
+                <p style={{ margin: 0, fontSize: "12px", color: "var(--text-secondary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {l.server}
+                </p>
+              </div>
+              <button
+                onClick={async () => {
+                  const ok = await copyToClipboard(generateManageUrl(l.shareId));
+                  if (ok) {
+                    setCopied(l.shareId);
+                    setTimeout(() => setCopied(false), 2000);
+                  }
+                }}
+                style={{
+                  padding: "6px 10px",
+                  borderRadius: "var(--radius-btn)",
+                  background: "var(--bg-tertiary)",
+                  border: "1px solid var(--color-bone)",
+                  color: copied === l.shareId ? "var(--color-frost)" : "var(--text-secondary)",
+                  fontSize: "12px",
+                  cursor: "pointer",
+                  flexShrink: 0,
+                }}
+              >
+                {copied === l.shareId ? "✅" : "复制链接"}
+              </button>
+              <button
+                onClick={() => {
+                  removeMyLeader(l.shareId);
+                  const updated = getMyLeaders();
+                  setMyLeaders(updated);
+                  if (updated.length === 0) setView("create");
+                  else if (updated.length === 1) navigate(`/leader/${updated[0].shareId}`, { replace: true });
+                  else setView("pick");
+                }}
+                style={{
+                  padding: "6px 10px",
+                  borderRadius: "var(--radius-btn)",
+                  background: "transparent",
+                  border: "1px solid rgba(220,50,50,0.3)",
+                  color: "var(--color-blood)",
+                  fontSize: "12px",
+                  cursor: "pointer",
+                  flexShrink: 0,
+                }}
+              >
+                移除
+              </button>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  // ── 注册成功页 ──────────────────────────────────────────
+  if (view === "success" && createdLeader) {
+    const manageUrl = generateManageUrl(createdLeader.shareId);
+    return (
+      <div className="container" style={{ paddingTop: "40px", paddingBottom: "40px" }}>
+        <div style={{ textAlign: "center", marginBottom: "32px" }}>
+          <div style={{ fontSize: "48px", marginBottom: "12px" }}>🎉</div>
+          <h1 style={{ fontSize: "22px", fontWeight: 700, color: "var(--color-frost)", margin: "0 0 8px" }}>
+            团长身份已创建！
+          </h1>
+          <p style={{ fontSize: "14px", color: "var(--text-secondary)", margin: 0 }}>
+            {createdLeader.nickname} · {createdLeader.server}
+          </p>
+        </div>
+
+        {/* 入口链接提示 */}
+        <div
+          style={{
+            background: "var(--bg-secondary)",
+            borderRadius: "var(--radius-card)",
+            padding: "20px",
+            marginBottom: "16px",
+            border: "1px solid rgba(79,195,247,0.25)",
+          }}
+        >
+          <p style={{ margin: "0 0 6px", fontSize: "13px", color: "var(--color-frost)", fontWeight: 600 }}>
+            📌 你的专属入口
+          </p>
+          <p style={{ margin: "0 0 12px", fontSize: "12px", color: "var(--text-secondary)", lineHeight: 1.6 }}>
+            下次打开此链接，会自动跳转到你的管理页
+          </p>
+          <div
+            style={{
+              background: "var(--bg-tertiary)",
+              borderRadius: "var(--radius-btn)",
+              padding: "10px 12px",
+              fontSize: "12px",
+              color: "var(--text-muted)",
+              wordBreak: "break-all",
+              marginBottom: "10px",
+              lineHeight: 1.6,
+            }}
+          >
+            {manageUrl}
+          </div>
+          <button
+            onClick={async () => {
+              const ok = await copyToClipboard(manageUrl);
+              if (ok) {
+                setCopied(true);
+                setTimeout(() => setCopied(false), 2000);
+              }
+            }}
+            className="btn btn-secondary"
+            style={{ width: "100%", marginBottom: "8px" }}
+          >
+            {copied ? "✅ 已复制" : "复制入口链接"}
+          </button>
+          <p style={{ margin: 0, fontSize: "11px", color: "var(--text-muted)", textAlign: "center" }}>
+            建议保存到微信收藏或发给自己
+          </p>
+        </div>
+
+        {/* 密码提示 */}
+        <div
+          style={{
+            background: "var(--bg-secondary)",
+            borderRadius: "var(--radius-card)",
+            padding: "16px 20px",
+            marginBottom: "24px",
+            display: "flex",
+            alignItems: "center",
+            gap: "12px",
+          }}
+        >
+          <span style={{ fontSize: "24px" }}>🔑</span>
+          <div>
+            <p style={{ margin: "0 0 2px", fontSize: "13px", color: "var(--text-secondary)" }}>管理密码</p>
+            <p style={{ margin: 0, fontSize: "20px", fontWeight: 700, letterSpacing: "6px", color: "var(--text-primary)" }}>
+              {createdLeader.editPassword}
+            </p>
+          </div>
+        </div>
+
+        <button
+          onClick={() => navigate(`/leader/${createdLeader.shareId}?pwd=${createdLeader.editPassword}`)}
+          className="btn btn-primary"
+          style={{ width: "100%" }}
+        >
+          进入管理页 →
+        </button>
+      </div>
+    );
+  }
+
+  // ── 创建表单 ────────────────────────────────────────────
   const validate = () => {
     const newErrors = {};
     if (!form.nickname.trim()) newErrors.nickname = "请输入昵称";
@@ -88,14 +391,9 @@ export default function CreateLeader() {
         editPassword: form.editPassword,
       });
 
-      // 保存到本机历史
-      saveMyLeader({
-        shareId: leader.shareId,
-        nickname: leader.nickname,
-        server: leader.server,
-      });
-
+      saveMyLeader({ shareId: leader.shareId, nickname: leader.nickname, server: leader.server });
       setCreatedLeader({ ...leader, editPassword: form.editPassword });
+      setView("success");
     } catch (error) {
       console.error("创建失败:", error);
       setErrors({ submit: "创建失败，请重试" });
@@ -103,222 +401,18 @@ export default function CreateLeader() {
     }
   };
 
-  const handleDeleteMyLeader = (shareId) => {
-    removeMyLeader(shareId);
-    setMyLeaders(getMyLeaders());
-  };
-
-  const handleCopyManageUrl = async (shareId) => {
-    const url = generateManageUrl(shareId);
-    const ok = await copyToClipboard(url);
-    if (ok) {
-      setCopied(shareId);
-      setTimeout(() => setCopied(false), 2000);
-    }
-  };
-
-  // ── 注册成功页 ──────────────────────────────────────────
-  if (createdLeader) {
-    const manageUrl = generateManageUrl(createdLeader.shareId);
-    return (
-      <div className="container" style={{ paddingTop: "40px", paddingBottom: "40px" }}>
-        {/* 成功标题 */}
-        <div style={{ textAlign: "center", marginBottom: "32px" }}>
-          <div style={{ fontSize: "48px", marginBottom: "12px" }}>🎉</div>
-          <h1 style={{ fontSize: "22px", fontWeight: 700, color: "var(--color-frost)", margin: "0 0 8px" }}>
-            团长身份已创建！
-          </h1>
-          <p style={{ fontSize: "14px", color: "var(--text-secondary)", margin: 0 }}>
-            {createdLeader.nickname} · {createdLeader.server}
-          </p>
-        </div>
-
-        {/* 管理链接卡片 */}
-        <div
-          style={{
-            background: "var(--bg-secondary)",
-            borderRadius: "var(--radius-card)",
-            padding: "20px",
-            marginBottom: "16px",
-            border: "1px solid rgba(79,195,247,0.25)",
-          }}
-        >
-          <p style={{ margin: "0 0 6px", fontSize: "13px", color: "var(--color-frost)", fontWeight: 600 }}>
-            📌 你的管理链接
-          </p>
-          <p style={{ margin: "0 0 12px", fontSize: "12px", color: "var(--text-secondary)" }}>
-            下次打开此链接即可进入管理页（需输入密码）
-          </p>
-          <div
-            style={{
-              background: "var(--bg-tertiary)",
-              borderRadius: "var(--radius-btn)",
-              padding: "10px 12px",
-              fontSize: "12px",
-              color: "var(--text-muted)",
-              wordBreak: "break-all",
-              marginBottom: "10px",
-              lineHeight: 1.6,
-            }}
-          >
-            {manageUrl}
-          </div>
-          <button
-            onClick={() => handleCopyManageUrl(createdLeader.shareId)}
-            className="btn btn-secondary"
-            style={{ width: "100%", marginBottom: "8px" }}
-          >
-            {copied === createdLeader.shareId ? "✅ 已复制" : "复制管理链接"}
-          </button>
-          <p style={{ margin: 0, fontSize: "11px", color: "var(--text-muted)", textAlign: "center" }}>
-            建议：将链接发送给自己或保存到微信收藏
-          </p>
-        </div>
-
-        {/* 密码提示 */}
-        <div
-          style={{
-            background: "var(--bg-secondary)",
-            borderRadius: "var(--radius-card)",
-            padding: "16px 20px",
-            marginBottom: "24px",
-            display: "flex",
-            alignItems: "center",
-            gap: "12px",
-          }}
-        >
-          <span style={{ fontSize: "24px" }}>🔑</span>
-          <div>
-            <p style={{ margin: "0 0 2px", fontSize: "13px", color: "var(--text-secondary)" }}>
-              管理密码
-            </p>
-            <p style={{ margin: 0, fontSize: "20px", fontWeight: 700, letterSpacing: "6px", color: "var(--text-primary)" }}>
-              {createdLeader.editPassword}
-            </p>
-          </div>
-        </div>
-
-        {/* 进入管理页 */}
-        <button
-          onClick={() => navigate(`/leader/${createdLeader.shareId}?pwd=${createdLeader.editPassword}`)}
-          className="btn btn-primary"
-          style={{ width: "100%" }}
-        >
-          进入管理页 →
-        </button>
-      </div>
-    );
-  }
-
-  // ── 主页面 ──────────────────────────────────────────────
   return (
     <div className="container" style={{ paddingTop: "40px", paddingBottom: "40px" }}>
-
-      {/* 我的开团（历史记录） */}
+      {/* 返回按钮（有历史时显示） */}
       {myLeaders.length > 0 && (
-        <div style={{ marginBottom: "32px" }}>
-          <p style={{ margin: "0 0 12px", fontSize: "13px", color: "var(--text-secondary)", fontWeight: 600 }}>
-            📋 我的开团
-          </p>
-          <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-            {myLeaders.map((l) => (
-              <div
-                key={l.shareId}
-                style={{
-                  background: "var(--bg-secondary)",
-                  borderRadius: "var(--radius-card)",
-                  padding: "14px 16px",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "12px",
-                }}
-              >
-                {/* 头像 */}
-                <div
-                  style={{
-                    width: "40px",
-                    height: "40px",
-                    borderRadius: "50%",
-                    background: "linear-gradient(135deg, var(--color-frost) 0%, var(--color-frost-dim) 100%)",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    fontSize: "16px",
-                    fontWeight: 700,
-                    color: "var(--bg-primary)",
-                    flexShrink: 0,
-                  }}
-                >
-                  {l.nickname.charAt(0)}
-                </div>
-                {/* 信息 */}
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <p style={{ margin: "0 0 2px", fontSize: "14px", fontWeight: 600, color: "var(--text-primary)" }}>
-                    {l.nickname}
-                  </p>
-                  <p style={{ margin: 0, fontSize: "12px", color: "var(--text-secondary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                    {l.server}
-                  </p>
-                </div>
-                {/* 操作 */}
-                <div style={{ display: "flex", gap: "8px", flexShrink: 0 }}>
-                  <button
-                    onClick={() => handleCopyManageUrl(l.shareId)}
-                    style={{
-                      padding: "6px 10px",
-                      borderRadius: "var(--radius-btn)",
-                      background: "var(--bg-tertiary)",
-                      border: "1px solid var(--color-bone)",
-                      color: copied === l.shareId ? "var(--color-frost)" : "var(--text-secondary)",
-                      fontSize: "12px",
-                      cursor: "pointer",
-                    }}
-                  >
-                    {copied === l.shareId ? "✅" : "复制链接"}
-                  </button>
-                  <button
-                    onClick={() => navigate(`/leader/${l.shareId}`)}
-                    style={{
-                      padding: "6px 12px",
-                      borderRadius: "var(--radius-btn)",
-                      background: "var(--color-frost)",
-                      border: "none",
-                      color: "var(--bg-primary)",
-                      fontSize: "12px",
-                      fontWeight: 600,
-                      cursor: "pointer",
-                    }}
-                  >
-                    进入
-                  </button>
-                  <button
-                    onClick={() => handleDeleteMyLeader(l.shareId)}
-                    style={{
-                      padding: "6px 8px",
-                      borderRadius: "var(--radius-btn)",
-                      background: "transparent",
-                      border: "none",
-                      color: "var(--text-muted)",
-                      fontSize: "16px",
-                      cursor: "pointer",
-                    }}
-                    title="从本机移除"
-                  >
-                    ×
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-          <div style={{ marginTop: "20px", borderTop: "1px solid var(--bg-tertiary)", paddingTop: "20px" }}>
-            <p style={{ margin: "0 0 4px", fontSize: "13px", color: "var(--text-secondary)", fontWeight: 600 }}>
-              ＋ 创建新的团长身份
-            </p>
-          </div>
-        </div>
+        <button
+          onClick={() => setView(myLeaders.length === 1 ? "pick" : "pick")}
+          style={{ background: "none", border: "none", color: "var(--text-secondary)", fontSize: "14px", cursor: "pointer", padding: "0 0 20px", display: "flex", alignItems: "center", gap: "4px" }}
+        >
+          ‹ 返回
+        </button>
       )}
 
-      {/* 页面标题 */}
       <div style={{ textAlign: "center", marginBottom: "32px" }}>
         <h1 style={{ fontSize: "24px", fontWeight: 700, color: "var(--color-frost)", margin: "0 0 8px" }}>
           创建团长身份
@@ -328,7 +422,6 @@ export default function CreateLeader() {
         </p>
       </div>
 
-      {/* 表单 */}
       <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
         {/* 昵称 */}
         <div>
@@ -377,17 +470,22 @@ export default function CreateLeader() {
                   className="input"
                   placeholder={`角色 ${index + 1}`}
                   value={char}
-                  onChange={(e) => updateCharacter(index, e.target.value)}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setForm((prev) => ({
+                      ...prev,
+                      characters: prev.characters.map((c, i) => (i === index ? val : c)),
+                    }));
+                  }}
                   maxLength={20}
                   style={{ flex: 1 }}
                 />
                 {form.characters.length > 1 && (
                   <button
                     type="button"
-                    onClick={() => removeCharacter(index)}
+                    onClick={() => setForm((prev) => ({ ...prev, characters: prev.characters.filter((_, i) => i !== index) }))}
                     style={{
-                      width: "44px",
-                      height: "44px",
+                      width: "44px", height: "44px",
                       borderRadius: "var(--radius-btn)",
                       background: "var(--bg-tertiary)",
                       border: "1px solid var(--color-bone)",
@@ -405,25 +503,23 @@ export default function CreateLeader() {
           {form.characters.length < 10 && (
             <button
               type="button"
-              onClick={addCharacter}
+              onClick={() => {
+                if (form.characters.length < 10)
+                  setForm((prev) => ({ ...prev, characters: [...prev.characters, ""] }));
+              }}
               style={{
-                marginTop: "8px",
-                padding: "10px",
-                width: "100%",
+                marginTop: "8px", padding: "10px", width: "100%",
                 borderRadius: "var(--radius-btn)",
                 background: "var(--bg-tertiary)",
                 border: "1px dashed var(--color-bone)",
                 color: "var(--text-secondary)",
-                cursor: "pointer",
-                fontSize: "14px",
+                cursor: "pointer", fontSize: "14px",
               }}
             >
               + 添加角色（{form.characters.length}/10）
             </button>
           )}
-          {errors.characters && (
-            <span style={{ fontSize: "12px", color: "var(--color-blood)" }}>{errors.characters}</span>
-          )}
+          {errors.characters && <span style={{ fontSize: "12px", color: "var(--color-blood)" }}>{errors.characters}</span>}
         </div>
 
         {/* 管理密码 */}
@@ -432,17 +528,13 @@ export default function CreateLeader() {
             管理密码 *
           </label>
           <input
-            type="password"
-            className="input"
+            type="password" className="input"
             placeholder="6位数字，用于管理面板"
             value={form.editPassword}
             onChange={(e) => setForm((prev) => ({ ...prev, editPassword: e.target.value }))}
-            maxLength={6}
-            inputMode="numeric"
+            maxLength={6} inputMode="numeric"
           />
-          {errors.editPassword && (
-            <span style={{ fontSize: "12px", color: "var(--color-blood)" }}>{errors.editPassword}</span>
-          )}
+          {errors.editPassword && <span style={{ fontSize: "12px", color: "var(--color-blood)" }}>{errors.editPassword}</span>}
         </div>
 
         {/* 确认密码 */}
@@ -451,26 +543,16 @@ export default function CreateLeader() {
             确认密码 *
           </label>
           <input
-            type="password"
-            className="input"
+            type="password" className="input"
             placeholder="再次输入管理密码"
             value={form.confirmPassword}
             onChange={(e) => setForm((prev) => ({ ...prev, confirmPassword: e.target.value }))}
-            maxLength={6}
-            inputMode="numeric"
+            maxLength={6} inputMode="numeric"
           />
-          {errors.confirmPassword && (
-            <span style={{ fontSize: "12px", color: "var(--color-blood)" }}>{errors.confirmPassword}</span>
-          )}
+          {errors.confirmPassword && <span style={{ fontSize: "12px", color: "var(--color-blood)" }}>{errors.confirmPassword}</span>}
         </div>
 
-        {/* 提交 */}
-        <button
-          type="submit"
-          className="btn btn-primary"
-          disabled={isSubmitting}
-          style={{ marginTop: "8px" }}
-        >
+        <button type="submit" className="btn btn-primary" disabled={isSubmitting} style={{ marginTop: "8px" }}>
           {isSubmitting ? "创建中..." : "创建身份"}
         </button>
 
