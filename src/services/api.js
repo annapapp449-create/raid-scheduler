@@ -89,6 +89,16 @@ export async function getSchedulesByLeader(leaderId) {
   return fn(leaderId);
 }
 
+export async function getAllSchedulesByWeekKey(weekKey) {
+  const backend = getBackend();
+  if (backend === 'supabase') {
+    const { getAllSchedulesByWeekKey: fn } = await import('./supabase/scheduleService');
+    return fn(weekKey);
+  }
+  const { getAllSchedulesByWeekKey: fn } = await import('./leancloud/scheduleService');
+  return fn(weekKey);
+}
+
 export async function getSchedulesByWeekKey(weekKey) {
   const backend = getBackend();
   if (backend === 'supabase') {

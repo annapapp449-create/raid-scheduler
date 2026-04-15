@@ -107,10 +107,10 @@ export const generateManageUrl = (shareId) => {
 /**
  * 保存团长到本机历史（my_leaders）
  */
-export const saveMyLeader = ({ shareId, nickname, server }) => {
+export const saveMyLeader = ({ shareId, nickname, server, objectId }) => {
   const saved = JSON.parse(localStorage.getItem('my_leaders') || '[]');
   const filtered = saved.filter(l => l.shareId !== shareId);
-  const entry = { shareId, nickname, server, savedAt: Date.now() };
+  const entry = { shareId, nickname, server, objectId, savedAt: Date.now() };
   localStorage.setItem('my_leaders', JSON.stringify([entry, ...filtered].slice(0, 10)));
 };
 

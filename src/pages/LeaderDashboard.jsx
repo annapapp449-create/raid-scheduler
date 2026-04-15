@@ -11,7 +11,7 @@ import { getSignupsBySchedule } from "../services/api";
 import { mockLeader, mockSchedules, mockSignups } from "../utils/mockData";
 import { RAID_INSTANCES, SERVERS, WEEKDAYS } from "../utils/constants";
 import { CLASS_DATA, getSpecsByClassId, getSpecById } from "../utils/classRoleMap";
-import { generateShareUrl, generateManageUrl, getWeekKey, isSameDay, getScheduleDate, copyToClipboard, purgeLeaderData } from "../utils/helpers";
+import { generateShareUrl, generateManageUrl, getWeekKey, isSameDay, getScheduleDate, copyToClipboard, purgeLeaderData, getMyLeaders } from "../utils/helpers";
 import { useToast } from "../components/Toast";
 
 
@@ -86,6 +86,15 @@ export default function LeaderDashboard() {
   // 验证密码：统一走服务函数，localStorage / LeanCloud 均适用
   useEffect(() => {
     const pwd = searchParams.get("pwd");
+
+    // 本机保存的团长 → 直接免密进入
+    const myLeaders = getMyLeaders();
+    if (myLeaders.some((l) => l.shareId === shareId)) {
+      setIsAuthenticated(true);
+      setShowPasswordModal(false);
+      sessionStorage.setItem(`auth_${shareId}`, "true");
+      return;
+    }
 
     // sessionStorage 已认证过，直接通过
     if (sessionStorage.getItem(`auth_${shareId}`) === "true") {

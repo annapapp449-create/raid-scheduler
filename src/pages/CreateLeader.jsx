@@ -524,7 +524,7 @@ export default function CreateLeader() {
         </div>
 
         <button
-          onClick={() => navigate(`/leader/${createdLeader.shareId}?pwd=${createdLeader.editPassword}`)}
+          onClick={() => navigate(`/leader/${createdLeader.shareId}`)}
           className="btn btn-primary"
           style={{ width: "100%" }}
         >
@@ -568,7 +568,7 @@ export default function CreateLeader() {
         editPassword: form.editPassword,
       });
 
-      saveMyLeader({ shareId: leader.shareId, nickname: leader.nickname, server: leader.server });
+      saveMyLeader({ shareId: leader.shareId, nickname: leader.nickname, server: leader.server, objectId: leader.objectId });
       setCreatedLeader({ ...leader, editPassword: form.editPassword });
       setView("success");
     } catch (error) {

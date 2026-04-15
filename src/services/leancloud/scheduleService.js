@@ -83,6 +83,56 @@ export async function getSchedulesByLeader(leaderId) {
   return schedules.filter(s => s.leaderId === leaderId);
 }
 
+// Get all schedules by weekKey with leader info (for unified home)
+export async function getAllSchedulesByWeekKey(weekKey) {
+  if (isConfigured()) {
+    const query = new AV.Query(CLASS_NAME);
+    query.equalTo('weekKey', weekKey);
+    query.include('leader');
+    query.ascending('dayOfWeek');
+    const results = await query.find();
+
+    return results.map(r => ({
+      objectId: r.id,
+      leaderId: r.get('leader')?.id,
+      leaderNickname: r.get('leader')?.get('nickname') ?? null,
+      leaderServer: r.get('leader')?.get('server') ?? null,
+      leaderShareId: r.get('leader')?.get('shareId') ?? null,
+      instanceId: r.get('instanceId'),
+      instanceName: r.get('instanceName'),
+      raidSize: r.get('raidSize'),
+      characterName: r.get('characterName'),
+      characterClass: r.get('characterClass'),
+      server: r.get('server'),
+      dayOfWeek: r.get('dayOfWeek'),
+      startTime: r.get('startTime'),
+      weekKey: r.get('weekKey'),
+      signupCount: r.get('signupCount'),
+      status: r.get('status'),
+      fragmentEnabled: r.get('fragmentEnabled'),
+      fragmentStatus: r.get('fragmentStatus'),
+      teamConfig: r.get('teamConfig'),
+    }));
+  }
+
+  // Fallback: localStorage — cross-reference with leaders
+  const schedules = JSON.parse(localStorage.getItem('lc_schedules') || '[]');
+  const leaders = JSON.parse(localStorage.getItem('lc_leaders') || '[]');
+
+  return schedules
+    .filter(s => s.weekKey === weekKey)
+    .map(s => {
+      const leader = leaders.find(l => l.objectId === s.leaderId);
+      return {
+        ...s,
+        leaderNickname: leader?.nickname ?? null,
+        leaderServer: leader?.server ?? null,
+        leaderShareId: leader?.shareId ?? null,
+      };
+    })
+    .sort((a, b) => a.dayOfWeek - b.dayOfWeek);
+}
+
 // Get schedules by weekKey
 export async function getSchedulesByWeekKey(weekKey) {
   if (isConfigured()) {

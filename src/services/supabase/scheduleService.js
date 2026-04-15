@@ -54,6 +54,25 @@ export async function getSchedulesByLeader(leaderId) {
   return (data || []).map(mapRow);
 }
 
+// Get all schedules by weekKey with leader info (for unified home)
+export async function getAllSchedulesByWeekKey(weekKey) {
+  const supabase = getSupabase();
+
+  const { data, error } = await supabase
+    .from(TABLE)
+    .select('*, leaders(id, nickname, server, share_id)')
+    .eq('week_key', weekKey)
+    .order('day_of_week', { ascending: true });
+
+  if (error) throw new Error(`查询本周开团失败: ${error.message}`);
+  return (data || []).map(row => ({
+    ...mapRow(row),
+    leaderNickname: row.leaders?.nickname ?? null,
+    leaderServer: row.leaders?.server ?? null,
+    leaderShareId: row.leaders?.share_id ?? null,
+  }));
+}
+
 // Get schedules by weekKey
 export async function getSchedulesByWeekKey(weekKey) {
   const supabase = getSupabase();
