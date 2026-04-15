@@ -2,13 +2,11 @@ import { useState, useEffect, useMemo } from "react";
 import { useParams } from "react-router-dom";
 import RaidCalendar from "../components/RaidCalendar";
 import DayRaidsPanel from "../components/DayRaidsPanel";
-import { mockLeader, mockSchedules, mockSignups } from "../utils/mockData";
 import { useToast } from "../components/Toast";
 import { isSameDay, getScheduleDate } from "../utils/helpers";
 import { getLeaderByShareId } from "../services/leancloud/leaderService";
 import { getSchedulesByLeader } from "../services/leancloud/scheduleService";
 import { getSignupsBySchedule, createSignup, cancelSignup as cancelSignupService } from "../services/leancloud/signupService";
-import { isConfigured } from "../services/leancloud";
 
 /**
  * 玩家报名页
@@ -30,56 +28,37 @@ export default function RaidSignup() {
   const [calendarMonth, setCalendarMonth] = useState(today.getMonth() + 1);
   const [calendarYear, setCalendarYear] = useState(today.getFullYear());
 
-  // 数据加载
+  // 数据加载：服务函数内部已处理 LeanCloud / localStorage 两条路
   useEffect(() => {
     async function loadData() {
-      if (isConfigured()) {
-        try {
-          const leaderData = await getLeaderByShareId(shareId);
-          if (leaderData) {
-            setLeader(leaderData);
-            const schedulesData = await getSchedulesByLeader(leaderData.objectId);
-            setSchedules(schedulesData);
+      try {
+        const leaderData = await getLeaderByShareId(shareId);
+        if (leaderData) {
+          setLeader(leaderData);
+          const schedulesData = await getSchedulesByLeader(leaderData.objectId);
+          setSchedules(schedulesData);
 
-            // 加载各团次的报名
-            const signups = {};
-            for (const schedule of schedulesData) {
-              signups[schedule.objectId] = await getSignupsBySchedule(schedule.objectId);
-            }
-            setSignupsMap(signups);
-
-            // 检查 localStorage 是否有已报名记录
-            Object.entries(signups).forEach(([scheduleId, scheduleSignups]) => {
-              scheduleSignups.forEach((signup) => {
-                const savedId = localStorage.getItem(`signup_${scheduleId}`);
-                if (savedId === signup.objectId) {
-                  setCurrentPlayerId(signup.objectId);
-                }
-              });
-            });
+          const signups = {};
+          for (const schedule of schedulesData) {
+            signups[schedule.objectId] = await getSignupsBySchedule(schedule.objectId);
           }
-        } catch (error) {
-          console.error("加载数据失败:", error);
-        } finally {
-          setIsLoading(false);
-        }
-      } else {
-        // 使用 mock 数据
-        setTimeout(() => {
-          setLeader(mockLeader);
-          setSchedules(mockSchedules);
-          setSignupsMap(mockSignups);
-          setIsLoading(false);
+          setSignupsMap(signups);
 
-          Object.entries(mockSignups).forEach(([scheduleId, signups]) => {
-            signups.forEach((signup) => {
+          // 检查 localStorage 是否有已报名记录
+          Object.entries(signups).forEach(([scheduleId, scheduleSignups]) => {
+            scheduleSignups.forEach((signup) => {
               const savedId = localStorage.getItem(`signup_${scheduleId}`);
               if (savedId === signup.objectId) {
                 setCurrentPlayerId(signup.objectId);
               }
             });
           });
-        }, 300);
+        }
+        // leader 为 null 时显示"页面不存在"
+      } catch (error) {
+        console.error("加载数据失败:", error);
+      } finally {
+        setIsLoading(false);
       }
     }
     loadData();
@@ -96,31 +75,16 @@ export default function RaidSignup() {
   // 报名
   const handleSignup = async (scheduleId, formData) => {
     try {
-      let newSignup;
-
-      if (isConfigured()) {
-        newSignup = await createSignup({
-          scheduleId,
-          playerName: formData.playerName,
-          playerServer: formData.playerServer,
-          playerClass: formData.playerClass,
-          playerRole: formData.playerRole,
-          playerSpec: formData.playerSpec,
-          contactInfo: formData.contactInfo,
-          wantFragment: formData.wantFragment,
-        });
-      } else {
-        newSignup = {
-          objectId: `signup_${Date.now()}`,
-          playerName: formData.playerName,
-          playerServer: formData.playerServer,
-          playerClass: formData.playerClass,
-          playerRole: formData.playerRole,
-          playerSpec: formData.playerSpec,
-          contactInfo: formData.contactInfo,
-          status: "confirmed",
-        };
-      }
+      const newSignup = await createSignup({
+        scheduleId,
+        playerName: formData.playerName,
+        playerServer: formData.playerServer,
+        playerClass: formData.playerClass,
+        playerRole: formData.playerRole,
+        playerSpec: formData.playerSpec,
+        contactInfo: formData.contactInfo,
+        wantFragment: formData.wantFragment,
+      });
 
       setSignupsMap((prev) => ({
         ...prev,
@@ -161,9 +125,7 @@ export default function RaidSignup() {
     if (!signupId) return;
 
     try {
-      if (isConfigured()) {
-        await cancelSignupService(signupId);
-      }
+      await cancelSignupService(signupId);
 
       setSignupsMap((prev) => ({
         ...prev,
