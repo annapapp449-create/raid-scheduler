@@ -96,19 +96,6 @@ export default function RaidCard({
                     ? primaryInstance?.label
                     : instances.map((inst) => inst.label).join(" + ")}
                 </h4>
-                {instances.length === 1 && primaryInstance?.ilvl && (
-                  <span
-                    style={{
-                      fontSize: "11px",
-                      padding: "2px 6px",
-                      background: "rgba(255, 167, 38, 0.1)",
-                      color: "var(--color-ember)",
-                      borderRadius: "4px",
-                    }}
-                  >
-                    iLvl {primaryInstance.ilvl}
-                  </span>
-                )}
                 {instances.length > 1 && (
                   <span
                     style={{

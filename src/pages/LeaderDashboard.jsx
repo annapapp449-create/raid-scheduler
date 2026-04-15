@@ -637,9 +637,6 @@ export default function LeaderDashboard() {
                           <span style={{ fontSize: "13px", color: "var(--text-primary)" }}>
                             [{instance.phase}] {instance.label}
                           </span>
-                          <span style={{ fontSize: "11px", color: "var(--text-muted)", marginLeft: "auto" }}>
-                            iLvl {instance.ilvl}
-                          </span>
                         </label>
                       );
                     })}
