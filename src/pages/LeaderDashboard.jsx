@@ -194,14 +194,13 @@ export default function LeaderDashboard() {
       return;
     }
     const instances = RAID_INSTANCES.filter((r) => newSchedule.instanceIds.includes(r.id));
-    const totalSize = instances.reduce((sum, inst) => sum + (inst.size || 25), 0);
     const firstInstance = instances[0];
 
     const scheduleData = {
       leaderId: leader.objectId,
       instanceId: newSchedule.instanceIds[0],
       instanceName: firstInstance?.name || "",
-      raidSize: totalSize,
+      raidSize: 25,
       characterName: newSchedule.characterName,
       characterClass: newSchedule.characterClass,
       characterSpec: newSchedule.characterSpec,
