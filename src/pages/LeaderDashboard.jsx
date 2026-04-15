@@ -15,6 +15,7 @@ import { generateShareUrl, getWeekKey, isSameDay, getScheduleDate } from "../uti
 import { useToast } from "../components/Toast";
 import { isConfigured } from "../services/leancloud";
 
+
 /**
  * 团长管理面板
  */
@@ -49,34 +50,29 @@ export default function LeaderDashboard() {
   const [calendarMonth, setCalendarMonth] = useState(today.getMonth() + 1);
   const [calendarYear, setCalendarYear] = useState(today.getFullYear());
 
-  // 数据加载
+  // 数据加载：服务函数内部已处理 LeanCloud / localStorage 两条路
   useEffect(() => {
     async function loadData() {
-      if (isConfigured()) {
-        try {
-          // 从 LeanCloud 加载
-          const leaderData = await getLeaderByShareId(shareId);
-          if (leaderData) {
-            setLeader(leaderData);
-            const schedulesData = await getSchedulesByLeader(leaderData.objectId);
-            setSchedules(schedulesData);
+      try {
+        const leaderData = await getLeaderByShareId(shareId);
+        if (leaderData) {
+          setLeader(leaderData);
+          const schedulesData = await getSchedulesByLeader(leaderData.objectId);
+          setSchedules(schedulesData);
 
-            // 加载各团次的报名
-            const signups = {};
-            for (const schedule of schedulesData) {
-              signups[schedule.objectId] = await getSignupsBySchedule(schedule.objectId);
-            }
-            setSignupsMap(signups);
+          const signups = {};
+          for (const schedule of schedulesData) {
+            signups[schedule.objectId] = await getSignupsBySchedule(schedule.objectId);
           }
-        } catch (error) {
-          console.error("加载数据失败:", error);
-          // Fallback to mock data
+          setSignupsMap(signups);
+        } else {
+          // shareId 不存在时显示 demo 数据（仅用于演示链接 ABC12345）
           setLeader(mockLeader);
           setSchedules(mockSchedules);
           setSignupsMap(mockSignups);
         }
-      } else {
-        // 使用 mock 数据（无 LeanCloud 配置时）
+      } catch (error) {
+        console.error("加载数据失败:", error);
         setLeader(mockLeader);
         setSchedules(mockSchedules);
         setSignupsMap(mockSignups);
@@ -85,39 +81,35 @@ export default function LeaderDashboard() {
     loadData();
   }, [shareId]);
 
-  // 验证密码
+  // 验证密码：统一走服务函数，localStorage / LeanCloud 均适用
   useEffect(() => {
     const pwd = searchParams.get("pwd");
 
-    if (isConfigured()) {
-      // LeanCloud 模式
-      if (pwd) {
-        // 验证 URL 中的密码
-        getLeaderByShareId(shareId).then((leaderData) => {
-          if (leaderData) {
-            verifyPassword(leaderData, pwd).then((valid) => {
-              if (valid) {
-                setIsAuthenticated(true);
-                setShowPasswordModal(false);
-                sessionStorage.setItem(`auth_${shareId}`, "true");
-              }
-            });
-          }
-        });
-      } else if (sessionStorage.getItem(`auth_${shareId}`) === "true") {
-        setIsAuthenticated(true);
-        setShowPasswordModal(false);
-      }
-    } else {
-      // Mock 模式
-      if (pwd && pwd === mockLeader.editPassword) {
-        setIsAuthenticated(true);
-        setShowPasswordModal(false);
-        sessionStorage.setItem(`auth_${shareId}`, "true");
-      } else if (sessionStorage.getItem(`auth_${shareId}`) === "true") {
-        setIsAuthenticated(true);
-        setShowPasswordModal(false);
-      }
+    // sessionStorage 已认证过，直接通过
+    if (sessionStorage.getItem(`auth_${shareId}`) === "true") {
+      setIsAuthenticated(true);
+      setShowPasswordModal(false);
+      return;
+    }
+
+    if (pwd) {
+      getLeaderByShareId(shareId).then((leaderData) => {
+        if (leaderData) {
+          // 真实 leader：用服务函数验证（内部处理哈希比对）
+          verifyPassword(leaderData, pwd).then((valid) => {
+            if (valid) {
+              setIsAuthenticated(true);
+              setShowPasswordModal(false);
+              sessionStorage.setItem(`auth_${shareId}`, "true");
+            }
+          });
+        } else if (shareId === mockLeader.shareId && pwd === mockLeader.editPassword) {
+          // demo 演示模式（shareId = ABC12345）
+          setIsAuthenticated(true);
+          setShowPasswordModal(false);
+          sessionStorage.setItem(`auth_${shareId}`, "true");
+        }
+      });
     }
   }, [shareId, searchParams]);
 
@@ -129,22 +121,10 @@ export default function LeaderDashboard() {
   }, [showAddModal]);
 
   const handlePasswordSubmit = async () => {
-    if (isConfigured()) {
-      const leaderData = await getLeaderByShareId(shareId);
-      if (leaderData) {
-        const valid = await verifyPassword(leaderData, passwordInput);
-        if (valid) {
-          setIsAuthenticated(true);
-          setShowPasswordModal(false);
-          setAuthError("");
-          sessionStorage.setItem(`auth_${shareId}`, "true");
-        } else {
-          setAuthError("密码错误");
-          setPasswordInput("");
-        }
-      }
-    } else {
-      if (passwordInput === mockLeader.editPassword) {
+    const leaderData = await getLeaderByShareId(shareId);
+    if (leaderData) {
+      const valid = await verifyPassword(leaderData, passwordInput);
+      if (valid) {
         setIsAuthenticated(true);
         setShowPasswordModal(false);
         setAuthError("");
@@ -153,6 +133,15 @@ export default function LeaderDashboard() {
         setAuthError("密码错误");
         setPasswordInput("");
       }
+    } else if (shareId === mockLeader.shareId && passwordInput === mockLeader.editPassword) {
+      // demo 演示模式
+      setIsAuthenticated(true);
+      setShowPasswordModal(false);
+      setAuthError("");
+      sessionStorage.setItem(`auth_${shareId}`, "true");
+    } else {
+      setAuthError("密码错误");
+      setPasswordInput("");
     }
   };
 
